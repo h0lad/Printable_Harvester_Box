@@ -1,0 +1,262 @@
+# -*- coding: utf-8 -*-
+import os, FreeCAD as App, Part, Mesh
+V = App.Vector
+
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd(), "out")
+
+L_IN, W_IN, H_IN = 56.0, 49.0, 29.0      # Innenraum
+WALL, FLOOR, LID_T = 4.0, 9.0, 3.5       # massiver Boden mit Kabelbinder-Tunneln
+R_IN = 2.0
+GROOVE_W, GROOVE_D = 2.6, 1.5            # 2 mm Silikon-Rundschnur
+BOSS_OFF, BOSS_R = 4.5, 5.0              # Eckdome außerhalb der Dichtung
+INSERT_D, INSERT_DEPTH = 3.9, 7.0
+LID_HOLE_D = 3.4
+
+# PCB-Lage: KiCad (x,y) -> Gehäuse (X0 + x - 101, Y0 + 100 - y)
+X0, Y0 = 6.0, 1.5
+PCB_T = 1.6
+PLATE_Z0, PLATE_T = 9.5, 1.2             # Batterie-Abdeckplatte
+PILLAR_H = 5.0                           # Platinenunterseite = 10.7 + 5 = 15.7
+PCB_Z = PLATE_Z0 + PLATE_T + PILLAR_H
+PCB_CLR = 0.4                            # MJF-Toleranz ±0.3
+LIP_OVER = 0.8
+M2_PILOT = 1.9
+
+# Akku 852040
+BAT_T, BAT_W, BAT_L = 8.5, 20.0, 45.0     # inkl. Schutzplatine
+POCKET = (4.0, 0.5, 48.0, 21.0)           # x0, y0, Länge, Breite (innen)
+POCKET_WALL = 1.5
+
+# Durchführungen
+SMA_D, SMA_Y, SMA_Z = 6.7, 31.5, 8.0     # linke Wand mittig, unter dem linken PCB-Arm (Loch +0.2 wg. MJF)
+SMA_NOSE, SMA_BEND = 20.0, 5.0           # starre Innennase + Biegezone für das Kabel
+SMA_KEEPOUT_R = 6.1                      # Mutter SW8 über Eck 4.6 + 1.5 mm Spiel
+SMA_OUT_R, SMA_OUT_L = 11.0, 25.0         # außen frei für breite Schraubantennen (Ø 22 mm)
+GLAND = False                            # ersetzt durch Solar-Kabelbohrung im Deckel
+GLAND_D, GLAND_Y, GLAND_Z = 8.2, 8.0, 18.5   # M8x1.25 Kabelverschraubung (optional)
+
+# Solarpanel auf dem Deckel
+SOLAR = True
+PANEL = 50.0                    # Kantenlänge Panel
+PANEL_CLR, PANEL_RECESS = 0.3, 0.6   # Mulde zum Ausrichten/Einkleben
+SOLAR_HOLE_D, SOLAR_CSK_D = 3.2, 6.0  # Kabelbohrung + Senkung (Klebstoffreservoir)
+CHIMNEY_OD, CHIMNEY_L = 7.0, 5.0     # Rohrstutzen innen = längere Vergussstrecke
+CHANNEL_W, CHANNEL_D, CHANNEL_LEN = 3.0, 1.2, 40.0   # Kabelkanal unter dem Panel (in X)
+
+# Kabelbinder-Tunnel quer (Y) durch den massiven Boden, Binder 5 x 1.5 mm
+TIE_W, TIE_H, TIE_SKIN = 6.0, 3.0, 4.0   # Tunnel B x H; Bodenhaut 4 mm trägt die Zurrkraft (Binder biegt über ihre Kante)
+TIE_X = (8.0, 48.0)                      # Tunnelmitten in X
+TIE_R_EXIT = 3.5                         # Radius an der unteren Austrittskante (Binder-Umlenkung)
+TIE_LOAD_N = 400.0                       # Auslegung: Zugkraft je Binder-Strang (≈ 40 kg)
+
+def box(x0, y0, z0, l, w, h):
+    return Part.makeBox(l, w, h, V(x0, y0, z0))
+
+def rbox(x0, y0, z0, l, w, h, r):
+    b = box(x0, y0, z0, l, w, h)
+    if r <= 0: return b
+    ed = [e for e in b.Edges if abs(e.Vertexes[0].Z - e.Vertexes[1].Z) > 1e-6]
+    return b.makeFillet(r, ed)
+
+def cyl(x, y, z0, r, h, d=V(0, 0, 1)):
+    return Part.makeCylinder(r, h, V(x, y, z0), d)
+
+def fuse(*s):
+    r = s[0]
+    for x in s[1:]: r = r.fuse(x)
+    return r.removeSplitter()
+
+def kc(x, y):                      # KiCad -> Gehäuse
+    return (X0 + x - 101.0, Y0 + 100.0 - y)
+
+corners = [(-BOSS_OFF, -BOSS_OFF), (L_IN + BOSS_OFF, -BOSS_OFF),
+           (-BOSS_OFF, W_IN + BOSS_OFF), (L_IN + BOSS_OFF, W_IN + BOSS_OFF)]
+
+def outline(z0, h):
+    s = rbox(-WALL, -WALL, z0, L_IN + 2 * WALL, W_IN + 2 * WALL, h, R_IN + WALL)
+    parts = [s]
+    for (x, y) in corners:
+        parts.append(cyl(x, y, z0, BOSS_R, h))
+        bx = min(x, x + (BOSS_OFF + 1) * (1 if x < 0 else -1))
+        by = min(y, y + (BOSS_OFF + 1) * (1 if y < 0 else -1))
+        parts.append(box(bx, by, z0, BOSS_OFF + 1, BOSS_OFF + 1, h))
+    return fuse(*parts)
+
+EDGES = [  # ("L", start, end) / ("A", start, mid, end) in KiCad-Koordinaten
+ ("A",(101,63),(101.585786,61.585786),(103,61)), ("L",(101,87),(101,63)), ("L",(103,61),(113.5,61)),
+ ("A",(103,89),(101.585786,88.414214),(101,87)), ("L",(108,89),(103,89)),
+ ("A",(108,89),(109.414214,89.585786),(110,91)), ("L",(110,98),(110,91)),
+ ("A",(112,100),(110.585786,99.414214),(110,98)), ("L",(112,100),(137,100)),
+ ("A",(115.5,56.5),(116.085786,55.085786),(117.5,54.5)), ("A",(115.5,59),(114.914214,60.414214),(113.5,61)),
+ ("L",(115.5,59),(115.5,56.5)), ("L",(117.5,54.5),(128.5,54.5)),
+ ("A",(128.5,54.5),(129.914214,55.085786),(130.5,56.5)), ("L",(130.5,56.5),(130.5,59)),
+ ("A",(132.5,61),(131.085786,60.414214),(130.5,59)), ("A",(139,81),(139.585786,79.585786),(141,79)),
+ ("A",(139,98),(138.414214,99.414214),(137,100)), ("L",(139,98),(139,81)), ("L",(141,79),(147,79)),
+ ("L",(147,61),(132.5,61)), ("A",(147,61),(148.414214,61.585786),(149,63)),
+ ("A",(149,77),(148.414214,78.414214),(147,79)), ("L",(149,77),(149,63)),
+]
+def pcb_face(z):
+    es = []
+    for e in EDGES:
+        p = [V(*kc(*q), z) for q in e[1:]]
+        es.append(Part.LineSegment(p[0], p[1]).toShape() if e[0] == "L" else Part.Arc(*p).toShape())
+    return Part.Face(Part.Wire(Part.__sortEdges__(es)))
+
+base = outline(-FLOOR, FLOOR + H_IN)
+base = base.cut(rbox(0, 0, 0, L_IN, W_IN, H_IN + 1, R_IN))
+
+# O-Ring-Nut
+g_out = rbox(-WALL / 2 - GROOVE_W / 2, -WALL / 2 - GROOVE_W / 2, H_IN - GROOVE_D,
+             L_IN + WALL + GROOVE_W, W_IN + WALL + GROOVE_W, GROOVE_D + 1, R_IN + WALL / 2 + GROOVE_W / 2)
+g_in = rbox(-WALL / 2 + GROOVE_W / 2, -WALL / 2 + GROOVE_W / 2, H_IN - GROOVE_D - 1,
+            L_IN + WALL - GROOVE_W, W_IN + WALL - GROOVE_W, GROOVE_D + 3, R_IN + WALL / 2 - GROOVE_W / 2)
+base = base.cut(g_out.cut(g_in))
+for (x, y) in corners:
+    base = base.cut(cyl(x, y, H_IN - INSERT_DEPTH, INSERT_D / 2, INSERT_DEPTH + 0.01))
+
+# Akkuschacht (Wände), Kabelkerbe links hinten
+px, py, pl, pw = POCKET
+pw_ = POCKET_WALL
+pocket = box(px - pw_, 0, 0, pl + 2 * pw_, py + pw + pw_, PLATE_Z0).cut(box(px, py, -1, pl, pw, PLATE_Z0 + 2))
+pocket = pocket.cut(box(px + 1, py + pw - 0.1, PLATE_Z0 - 2.0, 7, pw_ + 0.2, 3))
+feats = [pocket]
+
+# Stützsäulen vom Boden (außerhalb des Schachts)
+for (x, y) in [(104.0, 62.3), (114.0, 62.5), (147.8, 62.3), (148.2, 74.5), (135.0, 70.0)]:
+    ex, ey = kc(x, y); feats.append(cyl(ex, ey, 0, 1.3, PCB_Z))
+# Schraubdom H1 (M2)
+hx, hy = kc(124.5, 61.35)
+feats.append(cyl(hx, hy, 0, 2.75, PCB_Z))
+
+# Seitliche Anschläge (0.3 mm Spiel zur Platinenkante), Oberkante = PCB-Oberseite + 1.2
+top = PCB_Z + PCB_T + 1.5
+lx, _ = kc(101, 0)
+rib_l_z0 = SMA_Z + SMA_KEEPOUT_R + 0.5                                    # über dem SMA-Freiraum
+feats.append(box(0, 26, rib_l_z0, lx - PCB_CLR, 10, top - rib_l_z0))       # links (linker Arm, an der Wand)
+rx, _ = kc(149, 0)
+feats.append(box(rx + PCB_CLR, 26, 0, L_IN - rx - PCB_CLR, 10, top))       # rechts (rechter Arm)
+_, ty = kc(0, 54.5)
+feats.append(box(23, ty + PCB_CLR, 0, 13, W_IN - ty - PCB_CLR, top))      # oben (oberer Arm)
+_, by = kc(0, 100)
+rib_z0 = PLATE_Z0 + PLATE_T + 0.4
+feats.append(box(20, 0, rib_z0, 19, by - PCB_CLR, top - rib_z0))           # unten (über dem Akku, an der Wand)
+# Haltenasen über der unteren Kante (Platine schräg drunterschieben, dann H1 verschrauben)
+lip_z = PCB_Z + PCB_T + 0.15
+for lxp in (21.0, 34.0):
+    feats.append(box(lxp, 0, lip_z, 4, by + LIP_OVER, top - lip_z))
+
+base = fuse(base, *feats)
+base = base.cut(cyl(hx, hy, PCB_Z - 5, M2_PILOT / 2, 5.01))
+
+# Durchbrüche
+base = base.cut(cyl(-WALL - 1, SMA_Y, SMA_Z, SMA_D / 2, WALL + 2, V(1, 0, 0)))
+if GLAND:
+    base = base.cut(cyl(-WALL - 1, GLAND_Y, GLAND_Z, GLAND_D / 2, WALL + 2, V(1, 0, 0)))
+
+# Kabelbinder-Tunnel im massiven Boden (Last geht in die 4 mm Bodenhaut und die Stege daneben, keine Kragarme)
+tz0 = -FLOOR + TIE_SKIN
+for tx in TIE_X:
+    base = base.cut(box(tx - TIE_W / 2, -WALL - 20, tz0, TIE_W, W_IN + 2 * WALL + 40, TIE_H))
+base = base.removeSplitter()
+# Austrittskanten verrunden: unten R_EXIT (Binder biegt dort Richtung Baum um), oben 1 mm
+def _exit_edges(zq):
+    out = []
+    for e in base.Edges:
+        if e.Curve.TypeId != "Part::GeomLine": continue
+        p0, p1 = e.Vertexes[0].Point, e.Vertexes[1].Point
+        if abs(p0.y - p1.y) > 1e-6 or abs(p0.z - p1.z) > 1e-6 or abs(p0.x - p1.x) < 1: continue
+        if abs(p0.z - zq) < 1e-6 and min(abs(p0.y + WALL), abs(p0.y - W_IN - WALL)) < 1e-6:
+            out.append(e)
+    return out
+base = base.makeFillet(TIE_R_EXIT, _exit_edges(tz0))
+base = base.makeFillet(1.0, _exit_edges(tz0 + TIE_H))
+base = base.removeSplitter()
+
+lid = outline(H_IN, LID_T)
+for (x, y) in corners:
+    lid = lid.cut(cyl(x, y, H_IN - 1, LID_HOLE_D / 2, LID_T + 2))
+SK = 0.4; SK_T = 1.6; SK_H = 2.0
+skirt = rbox(SK, SK, H_IN - SK_H, L_IN - 2 * SK, W_IN - 2 * SK, SK_H, R_IN) \
+    .cut(box(SK + SK_T, SK + SK_T, H_IN - SK_H - 1, L_IN - 2 * (SK + SK_T), W_IN - 2 * (SK + SK_T), SK_H + 2))
+lid = fuse(lid, skirt)
+if SOLAR:
+    lcx, lcy, ltop = L_IN / 2, W_IN / 2, H_IN + LID_T
+    pr = PANEL + 2 * PANEL_CLR
+    lid = lid.fuse(cyl(lcx, lcy, H_IN - CHIMNEY_L, CHIMNEY_OD / 2, CHIMNEY_L + 0.01))
+    lid = lid.cut(rbox(lcx - pr / 2, lcy - pr / 2, ltop - PANEL_RECESS, pr, pr, 1, 1.0))
+    ch_z = ltop - PANEL_RECESS - CHANNEL_D
+    lid = lid.cut(box(lcx - CHANNEL_LEN / 2, lcy - CHANNEL_W / 2, ch_z, CHANNEL_LEN, CHANNEL_W, 5))
+    lid = lid.cut(cyl(lcx, lcy, H_IN - CHIMNEY_L - 1, SOLAR_HOLE_D / 2, LID_T + CHIMNEY_L + 3))
+    csk_h = (SOLAR_CSK_D - SOLAR_HOLE_D) / 2
+    lid = lid.cut(Part.makeCone(SOLAR_HOLE_D / 2, SOLAR_CSK_D / 2, csk_h, V(lcx, lcy, ch_z - csk_h)))
+    lid = lid.removeSplitter()
+
+SKW, SKH = 1.25, 1.5                         # Zentrierschürze außen um die Schachtwände
+po_x0, po_x1, po_y1 = px - pw_, px + pl + pw_, py + pw + pw_
+plate = box(po_x0 - SKW - 0.35, 0.5, PLATE_Z0, (po_x1 - po_x0) + 2 * (SKW + 0.35), po_y1 + SKW + 0.35 - 0.5, PLATE_T)
+plate = plate.fuse(box(po_x0 - SKW - 0.35, 0.5, PLATE_Z0 - SKH, (po_x1 - po_x0) + 2 * (SKW + 0.35), po_y1 + SKW + 0.35 - 0.5, SKH)
+                   .cut(box(po_x0 - 0.35, -1, PLATE_Z0 - SKH - 1, (po_x1 - po_x0) + 0.7, po_y1 + 0.35 + 1, SKH + 2)))
+plate = plate.cut(box(px + 1, py + pw - 2, PLATE_Z0 - 2, 7, 5, 5))          # Kabelkerbe
+for (x, y) in [(112.5, 98.3), (138.2, 99.1), (125.0, 88.5), (103.5, 86.5)]:
+    ex, ey = kc(x, y); plate = plate.fuse(cyl(ex, ey, PLATE_Z0 + PLATE_T - 0.01, 1.2 if y > 98 else 1.5, PILLAR_H + 0.01))
+plate = plate.removeSplitter()
+
+
+pcb = pcb_face(PCB_Z).extrude(V(0, 0, PCB_T)).cut(cyl(hx, hy, PCB_Z - 1, 1.1, 5))
+def comp(x1, x2, y1, y2, h, bottom=False):
+    a, b = kc(x1, y1), kc(x2, y2)
+    z = PCB_Z - h if bottom else PCB_Z + PCB_T
+    return box(min(a[0], b[0]), min(a[1], b[1]), z, abs(a[0] - b[0]), abs(a[1] - b[1]), h)
+comps = fuse(comp(136.8, 147.7, 61.7, 78.4, 6.0), comp(116.9, 121.4, 55.0, 63.5, 4.5),
+             comp(112.1, 117.6, 90.9, 97.8, 6.0), comp(108.4, 113.9, 78.4, 85.3, 6.0),
+             comp(114.4, 120.5, 86.2, 89.7, 11.0), comp(117.6, 133.1, 66.8, 82.4, 3.2),
+             comp(120.7, 127.7, 69.9, 74.4, 4.5, True), comp(120.7, 129.7, 74.7, 79.2, 4.5, True))
+bat = box(px + (pl - BAT_L) / 2, py + (pw - BAT_W) / 2, 0.2, BAT_L, BAT_W, BAT_T)
+
+sma_keepout = cyl(0.01, SMA_Y, SMA_Z, SMA_KEEPOUT_R, SMA_NOSE + SMA_BEND, V(1, 0, 0))
+sma_outside = cyl(-WALL - 0.01 - SMA_OUT_L, SMA_Y, SMA_Z, SMA_OUT_R, SMA_OUT_L, V(1, 0, 0))
+# geplanter Pigtail-Weg (Kabel Ø1.13 + 0.9 mm Spiel -> Röhre r=1.5), endet 3 mm vor dem U.FL
+PIGTAIL = [(SMA_NOSE + SMA_BEND, SMA_Y, SMA_Z), (21.0, 34.5, 8.5), (14.0, 37.5, 9.5), (13.5, 43.5, 12.5),
+           (14.0, 45.0, 21.0), (22.0, 44.0, 25.0), (31.0, 37.0, 25.0)]
+def tube(pts, r):
+    t = None
+    for a_, b_ in zip(pts[:-1], pts[1:]):
+        a_, b_ = V(*a_), V(*b_); d_ = b_ - a_
+        seg = Part.makeCylinder(r, d_.Length, a_, d_).fuse(Part.makeSphere(r, b_))
+        t = seg if t is None else t.fuse(seg)
+    return t
+pig_tube = tube(PIGTAIL, 1.5)
+def check():
+    bad = []
+    for n2, b in (("Basis", base), ("Deckel", lid), ("Platte", plate), ("PCB", pcb), ("Bauteile", comps), ("Akku", bat)):
+        v = sma_keepout.common(b).Volume
+        if v > 1e-3: bad.append(f"SMA-Freiraum x {n2}: {v:.3f} mm3")
+        v = pig_tube.common(b).Volume
+        if v > 1e-3: bad.append(f"Pigtail-Weg x {n2}: {v:.3f} mm3")
+    v = sma_outside.common(base).Volume
+    if v > 1e-3: bad.append(f"SMA außen x Basis: {v:.3f} mm3")
+    for n1, a in (("PCB", pcb), ("Bauteile", comps), ("Akku", bat)):
+        for n2, b in (("Basis", base), ("Deckel", lid), ("Platte", plate)):
+            if n1 == n2: continue
+            v = a.common(b).Volume
+            if v > 1e-3: bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+    for n1, a, n2, b in (("Platte", plate, "Basis", base), ("Platte", plate, "Deckel", lid), ("Basis", base, "Deckel", lid)):
+        v = a.common(b).Volume
+        if v > 1e-3: bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+    return bad
+
+if os.environ.get("LHB_NO_EXPORT") != "1":  # Makro/freecadcmd: exportieren
+    os.makedirs(OUT_DIR, exist_ok=True)
+    parts = {"base": base, "lid": lid, "battery_plate": plate}
+    for n, s in parts.items():
+        print(n, "valid:", s.isValid(), "solids:", len(s.Solids), "vol cm3: %.2f" % (s.Volume / 1000),
+              "bbox:", [round(v, 1) for v in (s.BoundBox.XLength, s.BoundBox.YLength, s.BoundBox.ZLength)])
+        s.exportStep(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.step"))
+        m = Mesh.Mesh(s.tessellate(0.02)); m.write(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.stl"))
+    Part.makeCompound([base, lid, plate]).exportStep(os.path.join(OUT_DIR, "LoRaHarvesterBox_assembly.step"))
+    print("Kollisionen:", check() or "keine")
+    doc = App.newDocument("LoRaHarvesterBox_Enclosure")
+    for n, s in list(parts.items()) + [("PCB_dummy", pcb), ("Bauteile_dummy", comps), ("Akku_852040_dummy", bat)]:
+        doc.addObject("Part::Feature", n).Shape = s
+    doc.recompute(); doc.saveAs(os.path.join(OUT_DIR, "LoRaHarvesterBox_Enclosure.FCStd"))
+    print("fertig ->", OUT_DIR)
