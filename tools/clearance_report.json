@@ -1,0 +1,249 @@
+{
+ "tool": "clearance_probe.py",
+ "process": "SLS/MJF PA12",
+ "resolution_mm": 0.02,
+ "probes": [
+  {
+   "probe": "M3 driver from above, column A",
+   "free_radius_mm": 17.52,
+   "required_mm": 2.0,
+   "limited_by": "lid at [10.4, 10.7, 4.2, 4.7, 32.5, 40.5]",
+   "overlap_box": [
+    10.4,
+    10.7,
+    4.2,
+    4.7,
+    32.5,
+    40.5
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 17.52,
+   "service_limited_by": "lid at [10.4, 10.7, 4.2, 4.7, 32.5, 40.5]",
+   "counts": true,
+   "note": "4 mm driver bit or a 2.5 mm hex key on an M3 socket head. The panel standoffs are inboard of the corner columns so the driver path is outside the panel footprint"
+  },
+  {
+   "probe": "M3 driver from above, column B",
+   "free_radius_mm": 17.52,
+   "required_mm": 2.0,
+   "limited_by": "lid at [53.3, 53.6, 4.2, 4.7, 32.5, 40.5]",
+   "overlap_box": [
+    53.3,
+    53.6,
+    4.2,
+    4.7,
+    32.5,
+    40.5
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 17.52,
+   "service_limited_by": "lid at [53.3, 53.6, 4.2, 4.7, 32.5, 40.5]",
+   "counts": true,
+   "note": "4 mm driver bit or a 2.5 mm hex key on an M3 socket head. The panel standoffs are inboard of the corner columns so the driver path is outside the panel footprint"
+  },
+  {
+   "probe": "M3 driver from above, column C",
+   "free_radius_mm": 17.52,
+   "required_mm": 2.0,
+   "limited_by": "lid at [10.4, 10.7, 44.3, 44.8, 32.5, 40.5]",
+   "overlap_box": [
+    10.4,
+    10.7,
+    44.3,
+    44.8,
+    32.5,
+    40.5
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 17.52,
+   "service_limited_by": "lid at [10.4, 10.7, 44.3, 44.8, 32.5, 40.5]",
+   "counts": true,
+   "note": "4 mm driver bit or a 2.5 mm hex key on an M3 socket head. The panel standoffs are inboard of the corner columns so the driver path is outside the panel footprint"
+  },
+  {
+   "probe": "M3 driver from above, column D",
+   "free_radius_mm": 17.52,
+   "required_mm": 2.0,
+   "limited_by": "lid at [53.3, 53.6, 44.3, 44.8, 32.5, 40.5]",
+   "overlap_box": [
+    53.3,
+    53.6,
+    44.3,
+    44.8,
+    32.5,
+    40.5
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 17.52,
+   "service_limited_by": "lid at [53.3, 53.6, 44.3, 44.8, 32.5, 40.5]",
+   "counts": true,
+   "note": "4 mm driver bit or a 2.5 mm hex key on an M3 socket head. The panel standoffs are inboard of the corner columns so the driver path is outside the panel footprint"
+  },
+  {
+   "probe": "M2 driver onto the PCB screw H1, lid open",
+   "free_radius_mm": 3.09,
+   "required_mm": 2.0,
+   "limited_by": "components at [26.4, 26.4, 40.0, 40.3, 17.3, 21.8]",
+   "overlap_box": [
+    26.4,
+    26.4,
+    40.0,
+    40.3,
+    17.3,
+    21.8
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 0.0,
+   "service_limited_by": "lid at [29.5, 29.5, 40.1, 40.2, 29.0, 40.5]",
+   "counts": true,
+   "note": "the board screw is a service item: it is reached with the lid off, and the lid does limit it"
+  },
+  {
+   "probe": "SMA bulkhead nut, thin open end spanner",
+   "free_radius_mm": 8.5,
+   "required_mm": 8.0,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]",
+   "overlap_box": [
+    2.5,
+    5.0,
+    23.0,
+    23.0,
+    8.6,
+    9.4
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 6.69,
+   "service_limited_by": "PCB at [6.0, 8.0, 31.2, 31.8, 15.7, 15.7]",
+   "counts": true,
+   "note": "fit the nut before the battery plate. The left PCB rib starts above the keep-out"
+  },
+  {
+   "probe": "ePTFE vent nut, fingers",
+   "free_radius_mm": 12.99,
+   "required_mm": 11.0,
+   "limited_by": "base at [56.0, 63.5, 24.0, 25.0, -0.0, 0.0]",
+   "overlap_box": [
+    56.0,
+    63.5,
+    24.0,
+    25.0,
+    -0.0,
+    0.0
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 12.99,
+   "service_limited_by": "base at [56.0, 63.5, 24.0, 25.0, -0.0, 0.0]",
+   "counts": true,
+   "note": "M12 nut 16.0 mm across in a 22.0 x 8.0 mm reserved pocket. The playbook wants 8 mm for a spanner and 11 mm for fingers"
+  },
+  {
+   "probe": "antenna base outside the left wall",
+   "free_radius_mm": 13.99,
+   "required_mm": 11.0,
+   "limited_by": "base at [-7.6, -4.6, 17.5, 17.5, 8.7, 9.3]",
+   "overlap_box": [
+    -7.6,
+    -4.6,
+    17.5,
+    17.5,
+    8.7,
+    9.3
+   ],
+   "pass": true,
+   "unobstructed": false,
+   "service_free_radius_mm": 13.99,
+   "service_limited_by": "base at [-7.6, -4.6, 17.5, 17.5, 8.7, 9.3]",
+   "counts": true,
+   "note": "an antenna base up to 22 mm across has to clear the lanyard lug and the floor"
+  },
+  {
+   "probe": "self-test, must be caught: axis inside the floor wall",
+   "free_radius_mm": 0.0,
+   "required_mm": 10.0,
+   "limited_by": "base at [28.0, 28.0, -2.0, -0.5, 4.0, 4.0]",
+   "overlap_box": [
+    28.0,
+    28.0,
+    -2.0,
+    -0.5,
+    4.0,
+    4.0
+   ],
+   "pass": false,
+   "unobstructed": false,
+   "service_free_radius_mm": 0.0,
+   "service_limited_by": "base at [28.0, 28.0, -2.0, -0.5, 4.0, 4.0]",
+   "counts": false,
+   "note": "seeded collision: the axis sits in solid base material, so the free radius has to come back near zero. A green result here means the probe is blind"
+  },
+  {
+   "probe": "self-test, must stay clear: empty vent chamber",
+   "free_radius_mm": 4.5,
+   "required_mm": 5.0,
+   "limited_by": "base at [53.5, 53.5, 14.7, 15.3, 0.0, 9.5]",
+   "overlap_box": [
+    53.5,
+    53.5,
+    14.7,
+    15.3,
+    0.0,
+    9.5
+   ],
+   "pass": false,
+   "unobstructed": false,
+   "service_free_radius_mm": 4.5,
+   "service_limited_by": "base at [53.5, 53.5, 14.7, 15.3, 0.0, 9.5]",
+   "counts": false,
+   "note": "seeded clearance with a known answer. The battery pocket wall at x = 53.5 is 4.5 mm from this axis. It is the nearest material, so the free radius must land near 4.5"
+  }
+ ],
+ "sma_spanner_reach": [
+  {
+   "segment_end_mm": 4.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 4.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 5.2,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 6.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 7.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 8.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 10.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  },
+  {
+   "segment_end_mm": 12.0,
+   "free_radius_mm": 8.5,
+   "limited_by": "base at [2.5, 5.0, 23.0, 23.0, 8.6, 9.4]"
+  }
+ ],
+ "failures": 0,
+ "selftest": {
+  "collision_caught": true,
+  "clearance_value_ok": true
+ }
+}

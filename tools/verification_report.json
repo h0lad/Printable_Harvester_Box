@@ -1,0 +1,438 @@
+{
+ "tool": "design_rules.py",
+ "process": "SLS/MJF PA12",
+ "design_rules": [
+  {
+   "feature": "wall",
+   "mm": 4.6,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "floor",
+   "mm": 9.0,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "lid",
+   "mm": 3.5,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "O-ring groove lip",
+   "mm": 1.1,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "tunnel roof, Y pair",
+   "mm": 2.0,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "tunnel roof, X pair",
+   "mm": 1.5,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "battery cover plate",
+   "mm": 1.5,
+   "limit": 0.8,
+   "pass": true
+  },
+  {
+   "feature": "pocket wall",
+   "mm": 1.5,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "lid skirt",
+   "mm": 1.6,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "material around the M3 insert",
+   "mm": 3.0,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "material under the SMA hole, floor to hole edge",
+   "mm": 5.55,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "material under the vent hole, floor to hole edge",
+   "mm": 6.7,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "feature": "O-ring groove lip",
+   "mm": 1.1,
+   "limit": 1.1,
+   "pass": true,
+   "rule": "playbook groove_lip_min_mm for a 2 mm cord"
+  },
+  {
+   "feature": "base wall, 83 x 68 mm part",
+   "mm": 4.6,
+   "limit": 2.0,
+   "pass": true,
+   "rule": "JLC wall row for a part this size"
+  },
+  {
+   "feature": "lid plate, 83 x 68 mm part",
+   "mm": 3.5,
+   "limit": 2.0,
+   "pass": true,
+   "rule": "JLC wall row for a part this size"
+  },
+  {
+   "feature": "battery cover plate, 54 x 24 mm part",
+   "mm": 1.5,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC wall row for a 50 x 50 mm part"
+  },
+  {
+   "feature": "pocket wall",
+   "mm": 1.5,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  },
+  {
+   "feature": "lid skirt wall",
+   "mm": 1.6,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  },
+  {
+   "feature": "tunnel roof, Y pair",
+   "mm": 2.0,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  },
+  {
+   "feature": "tunnel roof, X pair",
+   "mm": 1.5,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  },
+  {
+   "feature": "skin under a tunnel at the exit",
+   "mm": 2.0,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "exit radius against the tie bearing face"
+  },
+  {
+   "feature": "skid rail width",
+   "mm": 6.0,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  },
+  {
+   "feature": "skid rail under the V-groove",
+   "mm": 2.0,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "the V leaves this much skid"
+  },
+  {
+   "feature": "wall behind the vent drain slot",
+   "mm": 3.4,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "drain slot against the sealed wall"
+  },
+  {
+   "feature": "material between the drain slot and the vent bore",
+   "mm": 5.8,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "slot below the bore"
+  },
+  {
+   "feature": "lid drip rib",
+   "mm": 1.5,
+   "limit": 1.5,
+   "pass": true,
+   "rule": "JLC min for a structural feature"
+  }
+ ],
+ "holes": [
+  {
+   "hole": "lid screw clearance",
+   "dia_mm": 3.6,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "captive neck",
+   "dia_mm": 2.7,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "insert hole",
+   "dia_mm": 4.0,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "solar cable",
+   "dia_mm": 3.2,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "lanyard lug",
+   "dia_mm": 2.0,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "M2 pilot, thread forming",
+   "dia_mm": 1.7,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "vent thread",
+   "dia_mm": 12.6,
+   "limit": 1.0,
+   "pass": true
+  },
+  {
+   "hole": "SMA hole",
+   "dia_mm": 6.9,
+   "limit": 1.0,
+   "pass": true
+  }
+ ],
+ "gaps": [
+  {
+   "gap": "PCB to the ribs, bought part, only the case varies",
+   "mm": 0.4,
+   "limit": 0.5,
+   "pass": true
+  },
+  {
+   "gap": "lid skirt to the cavity wall",
+   "mm": 0.7,
+   "limit": 0.5,
+   "pass": true
+  },
+  {
+   "gap": "battery cell to the pocket wall",
+   "mm": 1.0,
+   "limit": 0.5,
+   "pass": true
+  },
+  {
+   "gap": "captive neck to the lid face, vertical",
+   "mm": 0.0,
+   "limit": 0.5,
+   "pass": true
+  }
+ ],
+ "parts": [
+  {
+   "part": "base",
+   "bbox_mm": [
+    83.0,
+    68.0,
+    41.0
+   ],
+   "volume_cm3": 77.8,
+   "solids": 1,
+   "shells": 1,
+   "fits_build_volume": true
+  },
+  {
+   "part": "lid",
+   "bbox_mm": [
+    83.0,
+    68.0,
+    16.5
+   ],
+   "volume_cm3": 20.6,
+   "solids": 1,
+   "shells": 1,
+   "fits_build_volume": true
+  },
+  {
+   "part": "battery_plate",
+   "bbox_mm": [
+    54.2,
+    24.1,
+    7.7
+   ],
+   "volume_cm3": 2.17,
+   "solids": 1,
+   "shells": 1,
+   "fits_build_volume": true
+  }
+ ],
+ "geometry_claims": [
+  {
+   "claim": "PCB outline from the EDGES table",
+   "measured": "48.0 x 45.5 x 1.6 mm",
+   "wanted": null
+  },
+  {
+   "claim": "PCB top to the hold down lip, vertical",
+   "measured": "0.50 mm nominal",
+   "wanted": 0.5
+  },
+  {
+   "claim": "tunnel exit radius faces on the base",
+   "measured": "16 of 8 possible (4 tunnels x 2 ends)",
+   "wanted": 8
+  },
+  {
+   "claim": "insert bore vs the maker's M3 bore of 4.0",
+   "measured": "4.0 mm",
+   "wanted": null
+  },
+  {
+   "claim": "insert depth vs 5.7 mm insert plus 1",
+   "measured": "7.0 mm",
+   "wanted": 6.7
+  },
+  {
+   "claim": "vent thread inside the wall",
+   "measured": "6.4 mm, nut 5.1 mm",
+   "wanted": null
+  }
+ ],
+ "collisions": [],
+ "pair_sweep": [
+  {
+   "pair": [
+    "pigtail",
+    "SMA keep-out"
+   ],
+   "mm3": 84.057,
+   "at": [
+    12.5,
+    25.9,
+    30.3,
+    38.9,
+    7.5,
+    12.0
+   ],
+   "expected": "the pigtail is the cable the keep-out reserves room for"
+  }
+ ],
+ "depowdering": {
+  "enclosed_voids": [],
+  "escape_paths": [
+   "tie tunnels, Y pair: 6.0 x 3.0, open at both ends",
+   "tie tunnels, X pair: 8.0 x 3.5, open at both ends",
+   "M3 insert bores: 4.0 blind, 7 mm deep, 3.8 < 3 x 3.8",
+   "M2 pilot: 1.7 blind, 5 mm deep",
+   "ePTFE vent: 12.6 through the end wall",
+   "SMA bulkhead: 6.9 through the end wall",
+   "solar cable: 3.2 through the lid and the chimney",
+   "battery pocket: open to the cavity, the plate stands it off",
+   "captive neck: 2.7 between two 3.6 bores",
+   "lanyard lug: 2.0 through"
+  ],
+  "pass": true
+ },
+ "selftest": {
+  "seeded_clash_mm3": 1421.159,
+  "seeded_clear_mm3": 0.0,
+  "clash_caught": true,
+  "clear_silent": true
+ },
+ "skin_under_tunnels": [
+  {
+   "tunnel": "Y pair, cable tie",
+   "face": "y-5",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "Y pair, cable tie",
+   "face": "y54",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "Y pair, cable tie",
+   "face": "y-5",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "Y pair, cable tie",
+   "face": "y54",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "X pair, cord",
+   "face": "x-5",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "X pair, cord",
+   "face": "x69",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "X pair, cord",
+   "face": "x-5",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  },
+  {
+   "tunnel": "X pair, cord",
+   "face": "x69",
+   "skin_mm": [
+    2.42,
+    4.0,
+    4.0
+   ]
+  }
+ ],
+ "failures": 0
+}

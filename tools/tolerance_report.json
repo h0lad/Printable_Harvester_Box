@@ -1,0 +1,356 @@
+{
+ "tool": "tolerance_mc.py",
+ "process": "SLS/MJF PA12",
+ "printed_tolerance_3sigma_mm": 0.3,
+ "samples_per_fit": 20000,
+ "gate_d_limit_percent": 0.1,
+ "fits": [
+  {
+   "fit": "lid skirt down the cavity wall, per side",
+   "value_mm": 0.7,
+   "sigma_mm": 0.1414,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": null,
+   "note": "nominal 0.7 mm per side, both faces printed, JLC min for assembled parts is 0.2-0.4 mm",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 0.7,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": 1,
+     "nominal_mm": 0.0,
+     "sigma_mm": 0.09999999999999999
+    }
+   ]
+  },
+  {
+   "fit": "PCB outline into the left locator rib",
+   "value_mm": 0.4,
+   "sigma_mm": 0.1118,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.005,
+   "analytic_percent": 0.0173,
+   "engine_gap_percent": 0.0123,
+   "severity": "hard",
+   "bought_tolerance_source": null,
+   "note": "rib face nominal 0.4 mm off the board edge. The board outline 48.0 x 45.5 mm is a bought part, and its outline tolerance is not stated in the repository",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 0.4,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 0.0,
+     "sigma_mm": 0.049999999999999996
+    }
+   ]
+  },
+  {
+   "fit": "PCB outline into the right locator rib",
+   "value_mm": 0.4,
+   "sigma_mm": 0.1118,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.01,
+   "analytic_percent": 0.0173,
+   "engine_gap_percent": 0.0073,
+   "severity": "hard",
+   "bought_tolerance_source": null,
+   "note": "same nominal as the left rib, mirrored: 0.4 mm each side of a 48 mm board in a 64 mm cavity",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 0.4,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 0.0,
+     "sigma_mm": 0.049999999999999996
+    }
+   ]
+  },
+  {
+   "fit": "hold down lip over the PCB top, vertical",
+   "value_mm": 0.5,
+   "sigma_mm": 0.1054,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0001,
+   "engine_gap_percent": 0.0001,
+   "severity": "hard",
+   "bought_tolerance_source": null,
+   "note": "lip underside at z 17.80, PCB top at 17.30: a 0.50 mm nominal gap inside the board's own thickness tolerance. A negative gap means the board cannot sit flat on its five pillars, so the M2 hole at H1 misaligns",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 0.5,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 0.0,
+     "sigma_mm": 0.03333333333333333
+    }
+   ]
+  },
+  {
+   "fit": "LiPo 852040 into the battery pocket, width",
+   "value_mm": 1.0,
+   "sigma_mm": 0.1944,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "vendor pouch tolerance taken as +-0.5 mm",
+   "note": "pocket width 21.0, cell 20.0",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 21.0,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 20.0,
+     "sigma_mm": 0.16666666666666666
+    }
+   ]
+  },
+  {
+   "fit": "LiPo 852040 into the battery pocket, length",
+   "value_mm": 3.0,
+   "sigma_mm": 0.1944,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "vendor pouch tolerance taken as +-0.5 mm",
+   "note": "pocket length 48.0, cell 45.0 including the protection board",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 48.0,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 45.0,
+     "sigma_mm": 0.16666666666666666
+    }
+   ]
+  },
+  {
+   "fit": "SMA bulkhead shank through the left wall",
+   "value_mm": 0.55,
+   "sigma_mm": 0.1014,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "SMA 6.35 mm shank, +-0.05 mm",
+   "note": "the playbook's own field lesson opened this hole from 6.7 to 6.9 mm",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 6.9,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 6.35,
+     "sigma_mm": 0.016666666666666666
+    }
+   ]
+  },
+  {
+   "fit": "ePTFE vent thread through the right wall",
+   "value_mm": 0.6,
+   "sigma_mm": 0.1054,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "M12 thread, +-0.1 mm",
+   "note": "",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 12.6,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 12.0,
+     "sigma_mm": 0.03333333333333333
+    }
+   ]
+  },
+  {
+   "fit": "M3 screw through the lid hole",
+   "value_mm": 0.6,
+   "sigma_mm": 0.1014,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "M3 shank, +-0.05 mm",
+   "note": "",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 3.6,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 3.0,
+     "sigma_mm": 0.016666666666666666
+    }
+   ]
+  },
+  {
+   "fit": "cable tie 5 x 1.5 in the Y tunnel",
+   "value_mm": 1.0,
+   "sigma_mm": 0.1054,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "cable tie, +-0.1 mm",
+   "note": "",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 6.0,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 5.0,
+     "sigma_mm": 0.03333333333333333
+    }
+   ]
+  },
+  {
+   "fit": "3 mm cord in the X tunnel",
+   "value_mm": 5.0,
+   "sigma_mm": 0.1202,
+   "fails_when": "below +0.00 mm",
+   "fail_probability_percent": 0.0,
+   "analytic_percent": 0.0,
+   "engine_gap_percent": 0.0,
+   "severity": "hard",
+   "bought_tolerance_source": "cord, +-0.2 mm",
+   "note": "the README buys cord up to 3 mm. The older version of this study typed 4 mm here",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 8.0,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 3.0,
+     "sigma_mm": 0.06666666666666667
+    }
+   ]
+  },
+  {
+   "fit": "M3 in the captive neck, interference wanted",
+   "value_mm": -0.3,
+   "sigma_mm": 0.1014,
+   "fails_when": "above -0.15 mm",
+   "fail_probability_percent": 7.005,
+   "analytic_percent": 6.9491,
+   "engine_gap_percent": 0.0559,
+   "severity": "soft",
+   "bought_tolerance_source": "M3 shank, +-0.05 mm",
+   "note": "neck 2.7 mm against a 3.0 mm shank gives 0.30 mm of interference. The playbook's step 5 range is 2.7 to 2.8 mm. Too little and the screw is not captive, which is a drop of threadlocker rather than scrap",
+   "terms": [
+    {
+     "sign": 1,
+     "nominal_mm": 2.7,
+     "sigma_mm": 0.09999999999999999
+    },
+    {
+     "sign": -1,
+     "nominal_mm": 3.0,
+     "sigma_mm": 0.016666666666666666
+    }
+   ]
+  }
+ ],
+ "oring_compression": {
+  "fit": "O-ring groove compression, 2 mm cord",
+  "value_mm": 20.0,
+  "sigma_mm": 5.175,
+  "fails_when": "below 15 % or above 25 % (playbook band), soft outside 10-35 %",
+  "fail_probability_percent": 30.625,
+  "below_10_percent": 2.665,
+  "above_35_percent": 0.185,
+  "severity": "soft",
+  "note": "groove 2.4 x 1.6 for a 2.0 mm cord, 20 % compression at nominal. The playbook default is 1.5 to 1.55 mm (22 to 25 %), so a nominal at the top of the band puts half of all prints outside it",
+  "terms": [
+   {
+    "sign": "cord",
+    "nominal_mm": 2.0,
+    "sigma_mm": 0.03333333333333333
+   },
+   {
+    "sign": "depth",
+    "nominal_mm": 1.6,
+    "sigma_mm": 0.09999999999999999
+   }
+  ]
+ },
+ "pcb_outline_sensitivity": [
+  {
+   "pcb_outline_tol_3sigma_mm": 0.1,
+   "fail_percent_per_side": 0.007
+  },
+  {
+   "pcb_outline_tol_3sigma_mm": 0.15,
+   "fail_percent_per_side": 0.017
+  },
+  {
+   "pcb_outline_tol_3sigma_mm": 0.2,
+   "fail_percent_per_side": 0.044
+  },
+  {
+   "pcb_outline_tol_3sigma_mm": 0.3,
+   "fail_percent_per_side": 0.234
+  },
+  {
+   "lipo_tol_3sigma_mm": 0.2,
+   "fail_percent_width": 0.0
+  },
+  {
+   "lipo_tol_3sigma_mm": 0.3,
+   "fail_percent_width": 0.0
+  },
+  {
+   "lipo_tol_3sigma_mm": 0.5,
+   "fail_percent_width": 0.0
+  },
+  {
+   "lipo_tol_3sigma_mm": 0.8,
+   "fail_percent_width": 0.022
+  }
+ ],
+ "hard_fits_over_limit": 0,
+ "engine_note": "mcerp sampling and a closed form normal over the same term list"
+}

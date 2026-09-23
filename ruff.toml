@@ -1,0 +1,14 @@
+# Pinned so a format run is reproducible instead of the tool's default.
+line-length = 120
+target-version = "py313"
+
+[lint]
+# The settled baseline, recorded rather than churned. Each entry names why it is not a defect here.
+ignore = [
+    "SIM115", # the tools open the macro and their report in one expression, deliberately
+    "UP031",  # printf formatting in the report strings is this repo's house style
+    "S102",   # exec of the FreeCAD macro is how every tool reads the geometry
+    "RUF100", # the F821 and E402 noqa markers document that exec pattern
+    "RUF046", # int() around a float in the tests, kept for clarity
+    "RUF015", # next(iter(x)) versus x[0] on FreeCAD shapes, where indexing is not always available
+]

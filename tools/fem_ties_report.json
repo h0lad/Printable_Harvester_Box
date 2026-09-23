@@ -1,0 +1,51 @@
+{
+ "tool": "fem_cable_ties.py",
+ "load_case": {
+  "tie_load_n_per_strand": 400.0,
+  "strands": 4.0,
+  "bend_deg": 90,
+  "exit_radius_mm": 2.0,
+  "skin_at_the_exit_mm": 2.0
+ },
+ "mesh_nodes": 22766,
+ "max_vm_mpa": 47.7,
+ "p99_vm_mpa": 23.4,
+ "p995_vm_mpa": 27.0,
+ "max_disp_mm": 0.25,
+ "safety_factor_vs_yield_48_mpa": 1.78,
+ "regions": {
+  "structure": {
+   "max": 47.7,
+   "p99": 23.9
+  },
+  "skin under the tunnel at the bend (the tie bearing face)": {
+   "max": 26.0,
+   "p99": 20.9
+  },
+  "trunk contact on the skids, boundary condition": {
+   "max": 8.7,
+   "p99": 8.4
+  }
+ },
+ "mass_g": 319.5,
+ "fatigue": [
+  {
+   "case": "self weight, every handling",
+   "stress_mpa": 0.075,
+   "cycles": 1000.0,
+   "safety_vs_cyclic_limit": 320.5
+  },
+  {
+   "case": "wind gust at 45 m/s, one cycle per gust",
+   "stress_mpa": 0.11,
+   "cycles": 1000000.0,
+   "safety_vs_cyclic_limit": 217.7
+  },
+  {
+   "case": "thermal swing against the straps, 30 % restrained",
+   "stress_mpa": 1.02,
+   "cycles": 9125.0,
+   "safety_vs_cyclic_limit": 23.5
+  }
+ ]
+}

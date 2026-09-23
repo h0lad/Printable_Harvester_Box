@@ -1,0 +1,151 @@
+{
+ "tool": "energy_budget.py",
+ "assumptions": {
+  "lat_deg": 38.0,
+  "reference_tilt_deg": 35.0,
+  "panel_m2": 0.0025000000000000005,
+  "module_efficiency": 0.18,
+  "charge_and_cell_efficiency": 0.9,
+  "cell_rise_k": 25.0,
+  "temp_coefficient_per_k": -0.004,
+  "p_avg_w": 0.06,
+  "cell_wh": 1.85,
+  "poa_source": "published monthly plane-of-array for 38 N at a 35 deg tilt, replace with a local measurement",
+  "warning": "monthly means contain no bad week. Autonomy and not the monthly balance is what covers a winter front"
+ },
+ "months": [
+  {
+   "month": "Jan",
+   "ghi_kwh_m2_day": 1.9,
+   "poa_kwh_m2_day": 2.6,
+   "poa_published_kwh_m2_day": 2.6,
+   "harvest_wh_day": 1.019,
+   "load_wh_day": 1.44,
+   "balance_wh_day": -0.421
+  },
+  {
+   "month": "Feb",
+   "ghi_kwh_m2_day": 2.7,
+   "poa_kwh_m2_day": 3.4,
+   "poa_published_kwh_m2_day": 3.4,
+   "harvest_wh_day": 1.327,
+   "load_wh_day": 1.44,
+   "balance_wh_day": -0.113
+  },
+  {
+   "month": "Mar",
+   "ghi_kwh_m2_day": 3.9,
+   "poa_kwh_m2_day": 4.6,
+   "poa_published_kwh_m2_day": 4.6,
+   "harvest_wh_day": 1.774,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.334
+  },
+  {
+   "month": "Apr",
+   "ghi_kwh_m2_day": 5.1,
+   "poa_kwh_m2_day": 5.5,
+   "poa_published_kwh_m2_day": 5.5,
+   "harvest_wh_day": 2.085,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.645
+  },
+  {
+   "month": "can",
+   "ghi_kwh_m2_day": 6.2,
+   "poa_kwh_m2_day": 6.3,
+   "poa_published_kwh_m2_day": 6.3,
+   "harvest_wh_day": 2.337,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.897
+  },
+  {
+   "month": "Jun",
+   "ghi_kwh_m2_day": 7.1,
+   "poa_kwh_m2_day": 6.9,
+   "poa_published_kwh_m2_day": 6.9,
+   "harvest_wh_day": 2.504,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 1.064
+  },
+  {
+   "month": "Jul",
+   "ghi_kwh_m2_day": 7.2,
+   "poa_kwh_m2_day": 7.0,
+   "poa_published_kwh_m2_day": 7.0,
+   "harvest_wh_day": 2.506,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 1.066
+  },
+  {
+   "month": "Aug",
+   "ghi_kwh_m2_day": 6.5,
+   "poa_kwh_m2_day": 6.5,
+   "poa_published_kwh_m2_day": 6.5,
+   "harvest_wh_day": 2.327,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.887
+  },
+  {
+   "month": "Sep",
+   "ghi_kwh_m2_day": 5.0,
+   "poa_kwh_m2_day": 5.4,
+   "poa_published_kwh_m2_day": 5.4,
+   "harvest_wh_day": 1.977,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.537
+  },
+  {
+   "month": "Oct",
+   "ghi_kwh_m2_day": 3.4,
+   "poa_kwh_m2_day": 4.1,
+   "poa_published_kwh_m2_day": 4.1,
+   "harvest_wh_day": 1.534,
+   "load_wh_day": 1.44,
+   "balance_wh_day": 0.094
+  },
+  {
+   "month": "Nov",
+   "ghi_kwh_m2_day": 2.2,
+   "poa_kwh_m2_day": 2.9,
+   "poa_published_kwh_m2_day": 2.9,
+   "harvest_wh_day": 1.109,
+   "load_wh_day": 1.44,
+   "balance_wh_day": -0.331
+  },
+  {
+   "month": "Dec",
+   "ghi_kwh_m2_day": 1.7,
+   "poa_kwh_m2_day": 2.4,
+   "poa_published_kwh_m2_day": 2.4,
+   "harvest_wh_day": 0.933,
+   "load_wh_day": 1.44,
+   "balance_wh_day": -0.507
+  }
+ ],
+ "worst_month": "Dec",
+ "worst_balance_wh_day": -0.507,
+ "max_load_mw_december": 38.9,
+ "max_load_mw_june": 104.3,
+ "panel_area_m2_for_break_even_in_december": 0.0039,
+ "days_of_autonomy": 1.28,
+ "cell_wh_for_5_days": 7.2,
+ "tilt_dec_jun_kwh_m2_day": {
+  "0.0": [
+   2.05,
+   7.79
+  ],
+  "15.0": [
+   2.24,
+   7.59
+  ],
+  "35.0": [
+   2.4,
+   6.9
+  ],
+  "50.0": [
+   2.43,
+   6.09
+  ]
+ }
+}

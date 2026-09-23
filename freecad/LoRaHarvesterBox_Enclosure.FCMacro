@@ -1,0 +1,519 @@
+# -*- coding: utf-8 -*-
+"""LoRaHarvesterBox enclosure: base, lid and battery plate, built from process constants.
+
+Every dimension here is derived from one of four sources, and nothing is typed twice:
+
+  * the print process (SLS/MJF PA12 at JLC3DP): 0.3 mm is the +-3 sigma on a printed face, so every
+    clearance that has to assemble is sized against that number, not against a nominal.
+  * the bought parts: PCB outline, LiPo pouch, SMA bulkhead, ePTFE vent, M3/M2 screws. The vendor
+    numbers are in the macro because the walls move when they do.
+  * the playbook numbers: 4.6 mm wall for a 2.4 mm O-ring groove, 1.1 mm lips, 8 mm free radius
+    around a fastener, 4.0 mm insert bore under a 4.6 mm knurl, 0.4 mm board clearance.
+  * the assembly order: every feature is placed so the part it locates can still be fitted.
+
+Geometry is built as raw Part shapes rather than a PartDesign body, because the whole case is one
+boolean recipe and the checks in tools/ need the result, not a feature tree.
+
+Run it directly to export, or import it with LHB_NO_EXPORT=1 set (every tool in tools/ does that).
+"""
+
+import math
+import os
+
+import FreeCAD as App
+import Mesh
+import Part
+V = App.Vector
+
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd(), "out")
+
+# The cavity and the shell. A WALL of 4.6 leaves 1.1 mm of lip either side of the 2.4 mm groove, which
+# is the playbook minimum for a sealing lip. FLOOR 9.0 is set by the 4 mm of lashing skin plus a 3 mm
+# tunnel plus clearance, and anything thinner turns the tie tunnels into a crack starter.
+L_IN, W_IN, H_IN = 64.0, 49.0, 29.0      # inner cavity; X 56..64 is the vent chamber
+WALL, FLOOR, LID_T = 4.6, 9.0, 3.5
+R_IN = 2.0
+
+# The O-ring gland. A 2.0 mm cord in a groove 1.6 mm deep and 2.4 mm wide is 20 % compression, which
+# is the centre of the 15-25 % band the playbook quotes. Compression is not a nominal, because the
+# depth carries the print's own +-0.3 mm, which is 5 points of squeeze at 1 sigma. The nominal is
+# therefore centred, and the groove depth of the first print gets measured (tools/tolerance_mc.py
+# prints the tails).
+GROOVE_W, GROOVE_D = 2.4, 1.6
+
+# The corner columns sit outside the seal band, so an insert can never breach it. A 5.0 mm radius
+# leaves 3.0 mm of wall around a 4.0 mm bore, and the lobes set the 83 x 68 mm footprint over the
+# columns.
+BOSS_OFF, BOSS_R = 4.5, 5.0
+INSERT_D, INSERT_DEPTH = 4.0, 7.0        # maker's bore for an M3x5.7 knurl of 4.6 mm, length + 1
+LID_HOLE_D = 3.6
+SCREW_CAPTIVE_D, SCREW_CAPTIVE_L = 2.7, 1.2   # short neck in the middle of the lid hole, M3 stays captive
+
+# The PCB position. KiCad (x, y) maps to the case as (X0 + x - 101, Y0 + 100 - y). The board is a
+# bought part and its outline is the EDGES table, so X0 and Y0 are the only free numbers. The board
+# sits hard left, because the SMA bulkhead and its cable bend zone need the right hand side of the
+# left wall.
+X0, Y0 = 6.0, 1.5
+PCB_T = 1.6
+PLATE_Z0, PLATE_T = 9.5, 1.5             # battery cover plate, 1.5 mm: the printer's wall row for a part this size
+PILLAR_H = 4.7                           # PCB underside at 15.7, measured from the plate's top face
+PCB_Z = PLATE_Z0 + PLATE_T + PILLAR_H
+PCB_CLR = 0.4                            # board edge to rib, board is a bought part and the case carries +-0.3
+LIP_OVER = 0.8                           # hold down lip overhang in Y
+LIP_GAP = 0.5                            # lip underside above the board top: 0.5 mm is the print tolerance, not a feeler
+M2_PILOT = 1.7                           # 0.85 of the M2 major, so the thread has something to cut
+
+# The LiPo 852040. The pocket is 1 mm wider and 3 mm longer than the cell, and the walls also act as
+# the strain relief for the lead, which leaves through the notch at the left rear.
+BAT_T, BAT_W, BAT_L = 8.5, 20.0, 45.0     # incl. protection board
+POCKET = (4.0, 0.5, 48.0, 21.0)           # x0, y0, length, width (inner)
+POCKET_WALL = 1.5
+
+# The SMA bulkhead in the left wall. The spanner sets Z 9.0, because a jaw has to reach 8-10 mm in
+# from the wall face, so the floor below the axis and the open space around it both have to stay at or
+# above the playbook's 8 mm free radius. At 8.0 the floor sat exactly on the limit.
+SMA_D, SMA_Y, SMA_Z = 6.9, 31.5, 9.0      # hole +0.2 over the 6.35 shank, all of it print tolerance
+SMA_NOSE, SMA_BEND = 20.0, 5.0            # rigid inner nose plus cable bend zone
+SMA_KEEPOUT_R = 6.1                       # nut AF8 across corners 4.6 plus 1.5 mm
+SMA_OUT_R, SMA_OUT_L = 11.0, 25.0          # outside keep-out, dia 22 antenna base
+GLAND = False                             # replaced by the potted cable hole in the lid
+GLAND_D, GLAND_Y, GLAND_Z = 8.2, 8.0, 18.5    # M8x1.25 cable gland (optional)
+
+# The solar panel sits on 8 mm spacers. The gap vents the lid and carries the panel cable to the
+# chimney, and the panel also shades 60 % of the lid, which is the only solar control this enclosure
+# has.
+SOLAR = True
+PANEL = 50.0
+STANDOFF_H, SPACER_D = 8.0, 8.0           # air gap and spacer diameter, 3 x 3 grid inside the panel outline
+SOLAR_HOLE_XY = (40.0, 12.0)              # potted cable feedthrough
+SOLAR_HOLE_D, SOLAR_CSK_D = 3.2, 6.0
+CHIMNEY_OD, CHIMNEY_L = 7.0, 5.0          # inner spigot, longer potting length
+
+# The ePTFE vent plug, M12, with 10 mm of thread behind the flange and a plastic nut inside. The plug
+# equalises pressure and moisture only, and at these numbers it is not a heat path, so nothing is
+# sized for airflow.
+VENT = True
+VENT_D, VENT_Y, VENT_Z = 12.6, 24.5, 13.0     # 12 mm thread + 0.6, under the nut's outer diameter
+VENT_THREAD = 10.0                             # thread length behind the flange, from the vendor
+VENT_NUT_ID, VENT_NUT_D, VENT_NUT_H = 12.0, 16.0, 5.1
+VENT_FACE_D, VENT_FACE_H = 21.0, 1.0           # spot face outside, so the 10 mm of thread can reach the nut
+VENT_CAP_D, VENT_CAP_H = 20.0, 8.0             # plug head outside, also the collision dummy
+VENT_NEST = False                              # no pocket: a 5.1 mm nut has to be gripped, not seated
+VENT_NEST_D, VENT_NEST_H = VENT_NUT_D + 1.4, VENT_NUT_H + 1.2
+VENT_NEST_HEX = False                          # True: hex pocket that also holds a hex nut
+VENT_FREE_D, VENT_FREE_L = 22.0, 8.0           # free space inside for fingers or a small wrench
+
+LANYARD = True                            # antenna lanyard lug
+
+# Lashing tunnels in the solid floor. The 4 mm skin under a tunnel is the load path: 400 N per
+# strand, checked in tools/fem_cable_ties.py. The exit radius is 2 mm and not 3.5, because a 3.5 mm
+# radius scoops that skin down to 0.5 mm at the face, which is where the FEM stress peaks.
+TIE_W, TIE_H, TIE_SKIN = 6.0, 3.0, 4.0
+TIE_X = (L_IN / 2 - 20.0, L_IN / 2 + 20.0)    # Y running pair for cable ties, centred, 40 mm apart
+TIE_Y = (W_IN / 2 - 14.5, W_IN / 2 + 14.5)    # X running pair for cord, centred as well, 29 mm apart
+TIE_W2, TIE_H2 = 8.0, 3.5
+TIE_R_EXIT = 2.0                          # radius at the lower exit edge, where the tie bends
+TIE_LOAD_N = 400.0                        # design load per tie strand, about 40 kg
+
+# Skids under the floor. The box is laid on rock, lashed with a cord, or strapped to a pipe, so the
+# floor must not lie flat on anything. Two skids hold it 3 mm clear: that breaks the conducted path
+# from sun-baked limestone into the cell (air 0.026 against PA12 0.25 W/mK, about a factor of four),
+# lets water and grass out from under the floor, lifts the tie exits to 7 mm and the vent to 15 mm,
+# and straddles a pipe so the box cannot rock about it. The V-groove centres it on a pipe and gives
+# grip on a smooth stone. The skids sit below the tunnels, so the 4 mm lashing skin is untouched.
+RAIL_W, RAIL_H = 6.0, 3.0
+RAIL_V_W, RAIL_V_D = 3.0, 1.0             # V-groove in the skid face
+
+# The condensate rib. When the box lies flat the lid is the coldest surface at night, and the board
+# sits 13 mm under it.
+DRIP_T, DRIP_H = 1.5, 2.0
+
+# The drain slot at the vent spot face. That face is a 21 mm well 1 mm deep, so it holds water
+# against the membrane. The slot lets the water out at the bottom, and it leaves 3.4 mm of wall
+# behind it.
+VENT_DRAIN_W, VENT_DRAIN_H = 3.0, 1.6
+
+
+def box(x0, y0, z0, length, width, height):
+    return Part.makeBox(length, width, height, V(x0, y0, z0))
+
+
+def vprism(x0, length, y_centre, z_bottom, width, depth):
+    """Triangular prism along X, used for the V-groove in the skid faces."""
+    tri = [V(x0, y_centre - width / 2, z_bottom), V(x0, y_centre + width / 2, z_bottom),
+           V(x0, y_centre, z_bottom + depth), V(x0, y_centre - width / 2, z_bottom)]
+    return Part.Face(Part.Wire(Part.makePolygon(tri).Edges)).extrude(V(length, 0, 0))
+
+
+def rbox(x0, y0, z0, length, width, height, r):
+    """Box with the four vertical edges rounded, which is how every wall in this case is shaped."""
+    b = box(x0, y0, z0, length, width, height)
+    if r <= 0:
+        return b
+    ed = [e for e in b.Edges if abs(e.Vertexes[0].Z - e.Vertexes[1].Z) > 1e-6]
+    return b.makeFillet(r, ed)
+
+
+def cyl(x, y, z0, r, h, d=V(0, 0, 1)):
+    return Part.makeCylinder(r, h, V(x, y, z0), d)
+
+
+def fuse(*s):
+    """Union with the splitter removed: leaves one shell where the pieces only touch."""
+    r = s[0]
+    for x in s[1:]:
+        r = r.fuse(x)
+    return r.removeSplitter()
+
+
+def kc(x, y):                      # KiCad to case coordinates
+    return (X0 + x - 101.0, Y0 + 100.0 - y)
+
+
+corners = [(-BOSS_OFF, -BOSS_OFF), (L_IN + BOSS_OFF, -BOSS_OFF),
+           (-BOSS_OFF, W_IN + BOSS_OFF), (L_IN + BOSS_OFF, W_IN + BOSS_OFF)]
+
+
+def outline(z0, h):
+    """Outer profile: rounded shell plus a lobe and a filled square at each corner.
+
+    The lobes carry the M3 inserts 4.5 mm outside the cavity corner, so the insert bore and the
+    O-ring band never share material. They are also why the case measures 83 x 68 mm over the
+    columns instead of 73.2 x 58.2.
+    """
+    s = rbox(-WALL, -WALL, z0, L_IN + 2 * WALL, W_IN + 2 * WALL, h, R_IN + WALL)
+    parts = [s]
+    for (x, y) in corners:
+        parts.append(cyl(x, y, z0, BOSS_R, h))
+        bx = min(x, x + (BOSS_OFF + 1) * (1 if x < 0 else -1))
+        by = min(y, y + (BOSS_OFF + 1) * (1 if y < 0 else -1))
+        parts.append(box(bx, by, z0, BOSS_OFF + 1, BOSS_OFF + 1, h))
+    return fuse(*parts)
+
+
+# The PCB outline, typed from the board file in KiCad coordinates. Keep the 101/100 origin, because
+# X0 and Y0 are measured from it and the two ribs, the two lips and the H1 boss all hang off the
+# resulting edges. A board revision invalidates this whole table (see skip_log.json,
+# step_2_ecad_intake).
+EDGES = [  # ("L", start, end) or ("A", start, mid, end), KiCad coordinates
+ ("A",(101,63),(101.585786,61.585786),(103,61)), ("L",(101,87),(101,63)), ("L",(103,61),(113.5,61)),
+ ("A",(103,89),(101.585786,88.414214),(101,87)), ("L",(108,89),(103,89)),
+ ("A",(108,89),(109.414214,89.585786),(110,91)), ("L",(110,98),(110,91)),
+ ("A",(112,100),(110.585786,99.414214),(110,98)), ("L",(112,100),(137,100)),
+ ("A",(115.5,56.5),(116.085786,55.085786),(117.5,54.5)), ("A",(115.5,59),(114.914214,60.414214),(113.5,61)),
+ ("L",(115.5,59),(115.5,56.5)), ("L",(117.5,54.5),(128.5,54.5)),
+ ("A",(128.5,54.5),(129.914214,55.085786),(130.5,56.5)), ("L",(130.5,56.5),(130.5,59)),
+ ("A",(132.5,61),(131.085786,60.414214),(130.5,59)), ("A",(139,81),(139.585786,79.585786),(141,79)),
+ ("A",(139,98),(138.414214,99.414214),(137,100)), ("L",(139,98),(139,81)), ("L",(141,79),(147,79)),
+ ("L",(147,61),(132.5,61)), ("A",(147,61),(148.414214,61.585786),(149,63)),
+ ("A",(149,77),(148.414214,78.414214),(147,79)), ("L",(149,77),(149,63)),
+]
+
+
+def pcb_face(z):
+    es = []
+    for e in EDGES:
+        p = [V(*kc(*q), z) for q in e[1:]]
+        es.append(Part.LineSegment(p[0], p[1]).toShape() if e[0] == "L" else Part.Arc(*p).toShape())
+    return Part.Face(Part.Wire(Part.__sortEdges__(es)))
+
+
+base = outline(-FLOOR, FLOOR + H_IN)
+base = base.cut(rbox(0, 0, 0, L_IN, W_IN, H_IN + 1, R_IN))
+
+# O-ring groove, centred on the wall so the two lips come out at (WALL - GROOVE_W) / 2 = 1.1 mm.
+# Cut after the outline and before the inserts: the corner lobes would otherwise leave the groove
+# discontinuous.
+g_out = rbox(-WALL / 2 - GROOVE_W / 2, -WALL / 2 - GROOVE_W / 2, H_IN - GROOVE_D,
+             L_IN + WALL + GROOVE_W, W_IN + WALL + GROOVE_W, GROOVE_D + 1, R_IN + WALL / 2 + GROOVE_W / 2)
+g_in = rbox(-WALL / 2 + GROOVE_W / 2, -WALL / 2 + GROOVE_W / 2, H_IN - GROOVE_D - 1,
+            L_IN + WALL - GROOVE_W, W_IN + WALL - GROOVE_W, GROOVE_D + 3, R_IN + WALL / 2 - GROOVE_W / 2)
+base = base.cut(g_out.cut(g_in))
+for (x, y) in corners:
+    # Blind, with a depth of the insert length plus 1 mm, so the displaced plastic has somewhere to go.
+    base = base.cut(cyl(x, y, H_IN - INSERT_DEPTH, INSERT_D / 2, INSERT_DEPTH + 0.01))
+
+# The battery pocket walls, with the lead notch at the left rear. The interior cut runs 2 mm over the
+# top of the wall, so the plate sits down on the wall instead of on the cell.
+px, py, pl, pw = POCKET
+pw_ = POCKET_WALL
+pocket = box(px - pw_, 0, 0, pl + 2 * pw_, py + pw + pw_, PLATE_Z0).cut(box(px, py, -1, pl, pw, PLATE_Z0 + 2))
+pocket = pocket.cut(box(px + 1, py + pw - 0.1, PLATE_Z0 - 2.0, 7, pw_ + 0.2, 3))
+feats = [pocket]
+
+# The PCB supports. Five pillars reach the underside of the board at 15.7, and the H1 boss carries
+# the single M2. The left pillar sits at KiCad y 59.5 and not at 62.3, because at 62.3 its 2.6 mm post
+# sat 6.4 mm from the SMA nut axis and closed the spanner path (tools/clearance_probe.py,
+# sma_spanner_reach).
+for (x, y) in [(104.0, 59.5), (114.0, 62.5), (147.8, 62.3), (148.2, 74.5), (135.0, 70.0)]:
+    ex, ey = kc(x, y)
+    feats.append(cyl(ex, ey, 0, 1.3, PCB_Z))
+# The H1 screw boss for the M2.
+hx, hy = kc(124.5, 61.35)
+feats.append(cyl(hx, hy, 0, 2.75, PCB_Z))
+
+# The edge locators. Three ribs hold the board laterally, and one lip pair plus H1 hold it down. The
+# M2 hole locates the board itself, and the ribs carry the 0.4 mm print clearance.
+top = PCB_Z + PCB_T + 1.5
+lx, _ = kc(101, 0)
+rib_l_z0 = SMA_Z + SMA_KEEPOUT_R + 2.5    # keeps a spanner path to the bulkhead nut: 8.6 mm free radius
+feats.append(box(0, 26, rib_l_z0, lx - PCB_CLR, 10, top - rib_l_z0))       # left arm, on the wall
+rx, _ = kc(149, 0)
+feats.append(box(rx + PCB_CLR, 26, 0, 1.6, 10, top))                       # right locator rib
+_, ty = kc(0, 54.5)
+feats.append(box(23, ty + PCB_CLR, 0, 13, W_IN - ty - PCB_CLR, top))       # top arm
+_, by = kc(0, 100)
+rib_z0 = PLATE_Z0 + PLATE_T + 0.4
+feats.append(box(20, 0, rib_z0, 19, by - PCB_CLR, top - rib_z0))           # bottom edge, above the battery
+# The hold-down lips at the bottom edge. The board goes in at about 15 degrees with its bottom edge
+# clear of the inner face of the lip, and it then lays down flat. The lip gap is 0.5 mm, so the lips
+# stop lift rather than clamp. tools/montage_simulation.py sweeps that rotation and prints the
+# residual clearance.
+lip_z = PCB_Z + PCB_T + LIP_GAP
+for lxp in (21.0, 34.0):
+    feats.append(box(lxp, 0, lip_z, 4, by + LIP_OVER, top - lip_z))
+
+base = fuse(base, *feats)
+base = base.cut(cyl(hx, hy, PCB_Z - 5, M2_PILOT / 2, 5.01))
+
+# The openings in the shell
+base = base.cut(cyl(-WALL - 1, SMA_Y, SMA_Z, SMA_D / 2, WALL + 2, V(1, 0, 0)))
+vent_nest_ring = None
+if VENT:
+    base = base.cut(cyl(L_IN - 1, VENT_Y, VENT_Z, VENT_D / 2, WALL + 2, V(1, 0, 0)))
+    base = base.cut(cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_FACE_D / 2, VENT_FACE_H + 1, V(1, 0, 0)))
+    # The drain slot. The spot face is a well, so the water runs out at its lowest point instead of
+    # sitting on the membrane. The cut starts just inside the floor of the face and runs outward, 3 mm
+    # wide and below the bore.
+    base = base.cut(box(L_IN + WALL - VENT_FACE_H - 0.2, VENT_Y - VENT_DRAIN_W / 2,
+                        VENT_Z - VENT_FACE_D / 2 - VENT_DRAIN_H, VENT_FACE_H + 1.4, VENT_DRAIN_W, VENT_DRAIN_H))
+    if VENT_NEST:                                                      # nut nest on the inner wall face
+        nest = cyl(L_IN - VENT_NEST_H, VENT_Y, VENT_Z, VENT_NEST_D / 2 + 3.0, VENT_NEST_H, V(1, 0, 0))
+        if VENT_NEST_HEX:
+            r_ = VENT_NEST_D / 2
+            pocket = Part.Face(Part.makePolygon([V(L_IN - VENT_NEST_H - 0.5, VENT_Y + r_ * math.cos(math.radians(a)),
+                                                   VENT_Z + r_ * math.sin(math.radians(a))) for a in range(0, 361, 60)]))
+            pocket = pocket.extrude(V(VENT_NEST_H + 1.0, 0, 0))
+        else:
+            pocket = cyl(L_IN - VENT_NEST_H - 0.5, VENT_Y, VENT_Z, VENT_NEST_D / 2, VENT_NEST_H + 1.0, V(1, 0, 0))
+        nest = nest.cut(pocket)
+        vent_nest_ring = nest
+        base = base.fuse(nest).removeSplitter()
+if GLAND:
+    base = base.cut(cyl(-WALL - 1, GLAND_Y, GLAND_Z, GLAND_D / 2, WALL + 2, V(1, 0, 0)))
+
+# Lashing tunnels in the solid floor. The load goes into the 4 mm skin below the tunnel and into the
+# 2 mm rib above it: no cantilever anywhere, which is why the FEM stress peaks at the exit radius and
+# nowhere else.
+tz0 = -FLOOR + TIE_SKIN
+for tx in TIE_X:
+    base = base.cut(box(tx - TIE_W / 2, -WALL - 20, tz0, TIE_W, W_IN + 2 * WALL + 40, TIE_H))
+for ty in TIE_Y:
+    base = base.cut(box(-WALL - 20, ty - TIE_W2 / 2, tz0, L_IN + 2 * WALL + 40, TIE_W2, TIE_H2))
+base = base.removeSplitter()
+
+
+def _exit_edges(zq):
+    """Straight edges of the four tunnel openings that lie at height zq on an outer face.
+
+    Both pairs need the radius: the tie and the cord are both loaded over that edge. Selecting by
+    orientation as well as height matters, because the two pairs exit on different faces, and a
+    selector that only matched X running edges left the cord tunnels square.
+    """
+    out = []
+    for e in base.Edges:
+        if e.Curve.TypeId != "Part::GeomLine":
+            continue
+        p0, p1 = e.Vertexes[0].Point, e.Vertexes[1].Point
+        if abs(p0.z - p1.z) > 1e-6 or abs(p0.z - zq) > 1e-6:
+            continue
+        dx, dy = abs(p0.x - p1.x), abs(p0.y - p1.y)
+        on_y_face = min(abs(p0.y + WALL), abs(p0.y - W_IN - WALL)) < 1e-6
+        on_x_face = min(abs(p0.x + WALL), abs(p0.x - L_IN - WALL)) < 1e-6
+        if dx > 1 and dy < 1e-6 and on_y_face and any(abs(p0.x - (tx + s * TIE_W / 2)) < 1e-6
+                                                     for tx in TIE_X for s in (-1, 1)):
+            out.append(e)
+        elif dy > 1 and dx < 1e-6 and on_x_face and any(abs(p0.y - (ty + s * TIE_W2 / 2)) < 1e-6
+                                                       for ty in TIE_Y for s in (-1, 1)):
+            out.append(e)
+    return out
+
+
+# The exits are rounded, because the tie bends there and a square edge cuts it. R2 and not R3.5,
+# because the skin it leaves below the tunnel limits the radius: TIE_SKIN - TIE_R_EXIT = 2.0 mm.
+base = base.makeFillet(TIE_R_EXIT, _exit_edges(tz0))
+base = base.makeFillet(1.0, _exit_edges(tz0 + TIE_H))
+base = base.makeFillet(1.0, _exit_edges(tz0 + TIE_H2))
+
+# The skids and their V-grooves. The tool adds them after the fillets, so the edge selector sees only
+# the tunnels.
+for ry in (-WALL, W_IN + WALL - RAIL_W):
+    base = base.fuse(box(-WALL, ry, -FLOOR - RAIL_H, L_IN + 2 * WALL, RAIL_W, RAIL_H))
+    base = base.cut(vprism(-WALL - 1.0, L_IN + 2 * WALL + 2.0, ry + RAIL_W / 2,
+                           -FLOOR - RAIL_H - 1.0, RAIL_V_W, RAIL_V_D + 1.0))
+base = base.removeSplitter()
+
+if LANYARD:                                                            # antenna lanyard lug
+    lug = box(-WALL - 3.0, SMA_Y - 21.0, SMA_Z - 3.0, 3.0, 7.0, 6.0)
+    lug = lug.cut(cyl(-WALL - 4, SMA_Y - 17.5, SMA_Z, 1.0, 6.0, V(1, 0, 0)))
+    base = base.fuse(lug).removeSplitter()
+base = base.removeSplitter()
+
+# The lid: the same outline, captive M3 screws, and a skirt that pilots into the cavity and squeezes the cord.
+lid = outline(H_IN, LID_T)
+for (x, y) in corners:                                                 # neck makes the M3 captive
+    zn0 = H_IN + (LID_T - SCREW_CAPTIVE_L) / 2
+    lid = lid.cut(cyl(x, y, H_IN - 1, LID_HOLE_D / 2, 1.0 + (LID_T - SCREW_CAPTIVE_L) / 2))
+    lid = lid.cut(cyl(x, y, zn0, SCREW_CAPTIVE_D / 2, SCREW_CAPTIVE_L))
+    lid = lid.cut(cyl(x, y, zn0 + SCREW_CAPTIVE_L, LID_HOLE_D / 2, LID_T + 2))
+SK, SK_T, SK_H = 0.7, 1.6, 2.0
+skirt = rbox(SK, SK, H_IN - SK_H, L_IN - 2 * SK, W_IN - 2 * SK, SK_H, R_IN) \
+    .cut(box(SK + SK_T, SK + SK_T, H_IN - SK_H - 1, L_IN - 2 * (SK + SK_T), W_IN - 2 * (SK + SK_T), SK_H + 2))
+lid = fuse(lid, skirt)
+# The condensate rib, one ring inside the skirt. Drips that run down the lid meet it 3 mm from the
+# wall and fall there instead of on the board, which starts 6 mm in. It clears the board by 9.7 mm in
+# Z and the grip space of the vent by 1 mm. It only earns its place when the box is tilted, and not
+# when it lies flat.
+DRIP = SK + SK_T
+drip = rbox(DRIP, DRIP, H_IN - DRIP_H, L_IN - 2 * DRIP, W_IN - 2 * DRIP, DRIP_H, R_IN) \
+    .cut(box(DRIP + DRIP_T, DRIP + DRIP_T, H_IN - DRIP_H - 1, L_IN - 2 * (DRIP + DRIP_T),
+             W_IN - 2 * (DRIP + DRIP_T), DRIP_H + 2))
+lid = fuse(lid, drip)
+lcx, lcy, ltop = L_IN / 2, W_IN / 2, H_IN + LID_T
+if SOLAR:
+    # The panel outline on the lid, the spacers inboard of it, and then the cable chimney. The panel
+    # is centred on the cavity, so its standoffs clear the four corner columns by more than a driver's
+    # reach.
+    px0, py0 = lcx - PANEL / 2, lcy - PANEL / 2
+    gx = (px0 + SPACER_D / 2 + 3, lcx, px0 + PANEL - SPACER_D / 2 - 3)
+    gy = (py0 + SPACER_D / 2 + 3, lcy, py0 + PANEL - SPACER_D / 2 - 3)
+    SPACERS = [(x_, y_) for x_ in gx for y_ in gy]
+    lid = fuse(lid, *[cyl(x_, y_, ltop - 0.01, SPACER_D / 2, STANDOFF_H + 0.01) for (x_, y_) in SPACERS])
+    shx, shy = SOLAR_HOLE_XY
+    lid = lid.fuse(cyl(shx, shy, H_IN - CHIMNEY_L, CHIMNEY_OD / 2, CHIMNEY_L + 0.01))
+    lid = lid.cut(cyl(shx, shy, H_IN - CHIMNEY_L - 1, SOLAR_HOLE_D / 2, LID_T + CHIMNEY_L + 3))
+    csk_h = (SOLAR_CSK_D - SOLAR_HOLE_D) / 2
+    lid = lid.cut(Part.makeCone(SOLAR_HOLE_D / 2, SOLAR_CSK_D / 2, csk_h + 0.01, V(shx, shy, ltop - csk_h)))
+lid = lid.removeSplitter()
+
+# The battery cover plate, 1.5 mm, which is the printer's wall row for a 54 x 24 mm part. The skirt
+# locates it on the pocket walls and takes the lead over the notch. Its four pillars carry the right
+# half of the board, and they stop at the same 15.7 plane as the base pillars, so the board sits
+# flat.
+SKW, SKH = 1.25, 1.5                         # locating skirt around the pocket walls
+po_x0, po_x1, po_y1 = px - pw_, px + pl + pw_, py + pw + pw_
+plate = box(po_x0 - SKW - 0.35, 0.5, PLATE_Z0, (po_x1 - po_x0) + 2 * (SKW + 0.35), po_y1 + SKW + 0.35 - 0.5, PLATE_T)
+plate = plate.fuse(box(po_x0 - SKW - 0.35, 0.5, PLATE_Z0 - SKH, (po_x1 - po_x0) + 2 * (SKW + 0.35), po_y1 + SKW + 0.35 - 0.5, SKH)
+                   .cut(box(po_x0 - 0.35, -1, PLATE_Z0 - SKH - 1, (po_x1 - po_x0) + 0.7, po_y1 + 0.35 + 1, SKH + 2)))
+plate = plate.cut(box(px + 1, py + pw - 2, PLATE_Z0 - 2, 7, 5, 5))          # lead notch
+for (x, y) in [(112.5, 98.3), (138.2, 99.1), (125.0, 88.5), (103.5, 86.5)]:
+    ex, ey = kc(x, y)
+    plate = plate.fuse(cyl(ex, ey, PLATE_Z0 + PLATE_T - 0.01, 1.2 if y > 98 else 1.5, PILLAR_H + 0.01))
+# The wrench relief over the SMA, sized from the probe. Without it the bulkhead nut cannot be held
+# once the plate is in, and the same cut is what lets the joint be re-tightened later without a
+# teardown.
+plate = plate.cut(box(-1.0, SMA_Y - 9.0, PLATE_Z0 - 2.0, 13.0, 18.0, PLATE_T + 4.0))
+plate = plate.removeSplitter()
+
+
+# The dummies, which are everything the printed parts must not touch. They carry vendor dimensions,
+# and they are the only reason the collision check means anything.
+pcb = pcb_face(PCB_Z).extrude(V(0, 0, PCB_T)).cut(cyl(hx, hy, PCB_Z - 1, 1.1, 5))
+
+
+def comp(x1, x2, y1, y2, h, bottom=False):
+    a, b = kc(x1, y1), kc(x2, y2)
+    z = PCB_Z - h if bottom else PCB_Z + PCB_T
+    return box(min(a[0], b[0]), min(a[1], b[1]), z, abs(a[0] - b[0]), abs(a[1] - b[1]), h)
+
+
+comps = fuse(comp(136.8, 147.7, 61.7, 78.4, 6.0), comp(116.9, 121.4, 55.0, 63.5, 4.5),
+             comp(112.1, 117.6, 90.9, 97.8, 6.0), comp(108.4, 113.9, 78.4, 85.3, 6.0),
+             comp(114.4, 120.5, 86.2, 89.7, 11.0), comp(117.6, 133.1, 66.8, 82.4, 3.2),
+             comp(120.7, 127.7, 69.9, 74.4, 4.5, True), comp(120.7, 129.7, 74.7, 79.2, 4.5, True))
+bat = box(px + (pl - BAT_L) / 2, py + (pw - BAT_W) / 2, 0.2, BAT_L, BAT_W, BAT_T)
+
+sma_keepout = cyl(0.01, SMA_Y, SMA_Z, SMA_KEEPOUT_R, SMA_NOSE + SMA_BEND, V(1, 0, 0))
+sma_outside = cyl(-WALL - 0.01 - SMA_OUT_L, SMA_Y, SMA_Z, SMA_OUT_R, SMA_OUT_L, V(1, 0, 0))
+# The planned pigtail path. A 1.13 mm cable plus clearance gives a tube of r=1.5, and it ends short
+# of the U.FL. It is a clearance probe and not a cable model, so the last 7 mm down to the connector
+# is unchecked.
+PIGTAIL = [(SMA_NOSE + SMA_BEND, SMA_Y, SMA_Z), (21.0, 34.5, 9.5), (14.0, 37.5, 10.5), (13.5, 43.5, 13.5),
+           (14.0, 45.0, 21.0), (22.0, 44.0, 25.0), (31.0, 37.0, 25.0)]
+def tube(pts, r):
+    t = None
+    for a_, b_ in zip(pts[:-1], pts[1:]):
+        a_, b_ = V(*a_), V(*b_)
+        d_ = b_ - a_
+        seg = Part.makeCylinder(r, d_.Length, a_, d_).fuse(Part.makeSphere(r, b_))
+        t = seg if t is None else t.fuse(seg)
+    return t
+pig_tube = tube(PIGTAIL, 1.5)
+vent_plug = cyl(L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_THREAD, V(1, 0, 0))
+vent_plug = vent_plug.fuse(cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_CAP_D / 2, 2.0 + VENT_FACE_H, V(1, 0, 0)))
+vent_plug = vent_plug.fuse(cyl(L_IN + WALL + 2.0, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 2.5, VENT_CAP_H - 2.0, V(1, 0, 0)))
+vent_plug = vent_plug.cut(cyl(L_IN + WALL + VENT_CAP_H - 1.2, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 5.0, 2.0, V(1, 0, 0)))
+vent_nut_dummy = cyl(L_IN - VENT_NUT_H, VENT_Y, VENT_Z, VENT_NUT_D / 2, VENT_NUT_H, V(1, 0, 0)).cut(
+                 cyl(L_IN - VENT_NUT_H - 1, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_NUT_H + 2, V(1, 0, 0)))
+vent_thread = cyl(L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_D / 2,
+                  VENT_THREAD - WALL + VENT_FACE_H, V(1, 0, 0))
+vent_nut = cyl(L_IN - VENT_FREE_L, VENT_Y, VENT_Z, VENT_FREE_D / 2, VENT_FREE_L, V(1, 0, 0))   # nut plus grip space
+
+
+def check():
+    """Pairwise overlap between the parts and the dummies, minus the pairs that share space by design.
+
+    The pigtail and the SMA keep-out are the same volume on purpose: the keep-out is what reserves the
+    room the cable runs in. Everything else here has to come back at zero.
+    """
+    bad = []
+    for n2, b in (("base", base), ("lid", lid), ("plate", plate), ("PCB", pcb), ("parts", comps), ("battery", bat)):
+        v = sma_keepout.common(b).Volume
+        if v > 1e-3:
+            bad.append(f"SMA keep-out x {n2}: {v:.3f} mm3")
+        if n2 != "base":            # the pigtail lives inside the keep-out by design
+            v = pig_tube.common(b).Volume
+            if v > 1e-3:
+                bad.append(f"pigtail path x {n2}: {v:.3f} mm3")
+    v = sma_outside.common(base).Volume
+    if v > 1e-3:
+        bad.append(f"SMA outside x base: {v:.3f} mm3")
+    for n1, a in (("PCB", pcb), ("parts", comps), ("battery", bat)):
+        for n2, b in (("base", base), ("lid", lid), ("plate", plate)):
+            if n1 == n2:
+                continue
+            v = a.common(b).Volume
+            if v > 1e-3:
+                bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+    for n1, a, n2, b in (("plate", plate, "base", base), ("plate", plate, "lid", lid), ("base", base, "lid", lid)):
+        v = a.common(b).Volume
+        if v > 1e-3:
+            bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+    if VENT:
+        base_novent = base.cut(vent_nest_ring) if vent_nest_ring else base
+        for nm, vk in (("vent thread", vent_thread), ("vent nut", vent_nut)):
+            for n2, b in (("PCB", pcb), ("parts", comps), ("base", base_novent), ("plate", plate), ("lid", lid)):
+                v = vk.common(b).Volume
+                if v > 1e-3:
+                    bad.append(f"{nm} x {n2}: {v:.3f} mm3")
+    return bad
+
+
+if os.environ.get("LHB_NO_EXPORT") != "1":  # tools import this file with the flag set, so they never touch the exports
+    os.makedirs(OUT_DIR, exist_ok=True)
+    parts = {"base": base, "lid": lid, "battery_plate": plate}
+    for n, s in parts.items():
+        print(n, "valid:", s.isValid(), "solids:", len(s.Solids), "vol cm3: %.2f" % (s.Volume / 1000),
+              "bbox:", [round(v, 1) for v in (s.BoundBox.XLength, s.BoundBox.YLength, s.BoundBox.ZLength)])
+        s.exportStep(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.step"))
+        Mesh.Mesh(s.tessellate(0.02)).write(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.stl"))
+    Part.makeCompound([base, lid, plate]).exportStep(os.path.join(OUT_DIR, "LoRaHarvesterBox_assembly.step"))
+    print("collisions:", check() or "none")
+    doc = App.newDocument("LoRaHarvesterBox_Enclosure")
+    dummies = [("PCB_dummy", pcb), ("parts_dummy", comps), ("LiPo_852040_dummy", bat),
+               ("vent_plug_dummy", vent_plug), ("vent_nut_dummy", vent_nut_dummy)]
+    for n, s in list(parts.items()) + dummies:
+        doc.addObject("Part::Feature", n).Shape = s
+    doc.recompute()
+    doc.saveAs(os.path.join(OUT_DIR, "LoRaHarvesterBox_Enclosure.FCStd"))
+    print("written to", OUT_DIR)
