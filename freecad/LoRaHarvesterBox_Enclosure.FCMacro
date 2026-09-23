@@ -1,0 +1,537 @@
+"""Three PA12 enclosure parts and mechanical envelopes for the LoRaHarvesterBox PCB.
+
+Dimensions in mm; Z=0 is the inside floor. Run in FreeCAD Python.
+LHB_NO_EXPORT=1 builds geometry without writing STEP, STL or FCStd files.
+"""
+
+import math
+import os
+from pathlib import Path
+import FreeCAD as App
+import Mesh
+import Part
+
+V = App.Vector
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT_DIR = os.path.join(ROOT, "steps_stl")
+L_IN, W_IN, H_IN = 64.0, 49.0, 31.0
+WALL, BODY_WALL, FLOOR, LID_T = 4.6, 2.4, 9.2, 3.5
+R_IN, R_SEAL = 2.0, 12.5
+SEAL_GAP = 0.0
+SEAL_WALL = 8.2
+CORD_D, GROOVE_W, GROOVE_D = 3.0, 4.8, 2.3
+COLLAR_H = 5.0
+BOSS_OFF, BOSS_R = 4.5, 5.0
+INSERT_D, INSERT_DEPTH = 4.0, 7.0
+RETAINER_D, RETAINER_DEPTH = 6.6, 0.8
+LID_HOLE_D = 3.6
+X0, Y0 = 6.0, 1.5
+PCB_T = 1.6
+PLATE_Z0, PLATE_T = 10.0, 2.1
+PILLAR_H = 5.0
+PCB_Z = PLATE_Z0 + PLATE_T + PILLAR_H
+M2_PILOT, M2_DEPTH = 1.7, 4.2
+PCB_SUPPORTS = [
+    (107.0, 61.5, 1.6),
+    (147.8, 62.3, 1.6),
+    (148.2, 74.5, 1.6),
+    (112.5, 98.3, 1.6),
+    (138.2, 99.1, 1.6),
+    (103.5, 86.5, 1.6),
+]
+CARRIER_FIX_POINTS = [(10.0, 44.5), (57.5, 40.5)]
+BAT_T, BAT_W, BAT_L = 8.5, 20.0, 45.0
+POCKET = (4.0, 0.0, 48.4, 21.2)
+POCKET_WALL = 1.8
+SMA_D, SMA_Y, SMA_Z = 6.9, 31.5, 9.0
+SMA_NOSE, SMA_BEND, SMA_KEEPOUT_R = 20.0, 5.0, 6.1
+SMA_OUT_R, SMA_OUT_L = 11.0, 25.0
+GLAND = False
+SOLAR = True
+# Panel envelope [mm]
+PANEL_L, PANEL_W, PANEL_T = 50.0, 50.0, 3.0
+STANDOFF_H, PANEL_BOND_T = 6.0, 2.3
+SPACER_D, SPACER_STEM_D, SPACER_CAP_T = 10.0, 6.0, 2.0
+PANEL_PAD_INSET = 7.0
+SPACER_H = STANDOFF_H - PANEL_BOND_T
+SOLAR_HOLE_XY = (L_IN / 2, W_IN / 2)
+SOLAR_HOLE_D, SOLAR_HOLE_PITCH = 4.0, 6.0
+SOLAR_WIRE_MAX_D = 2.0  # Insulated diameter per lead; cable not yet specified.
+SOLAR_WELL_L, SOLAR_WELL_W, SOLAR_WELL_H = 14.0, 8.0, 2.0
+SOLAR_WELL_WALL = 1.8
+VENT = True
+VENT_D, VENT_Y, VENT_Z = 12.6, 24.5, 13.0
+VENT_THREAD = 10.0
+VENT_NUT_ID, VENT_NUT_D, VENT_NUT_H = 12.0, 16.0, 5.1
+VENT_FACE_D, VENT_FACE_H = 21.0, 1.0
+VENT_CAP_D, VENT_CAP_H = 20.0, 8.0
+VENT_FREE_D, VENT_FREE_L = 22.0, 8.0
+VENT_NEST = False
+VENT_DRAIN_W, VENT_DRAIN_H = 3.0, 1.6
+VENT_DRAIN_OVERLAP = 0.5
+LANYARD = True
+TIE_W, TIE_H, TIE_SKIN = 6.0, 3.0, 4.0
+TIE_X = (12.0, 52.0)
+TIE_Y = (10.0, 39.0)
+TIE_W2, TIE_H2 = 8.0, 3.5
+TIE_R_EXIT, TIE_LOAD_N = 2.0, 100.0
+RAIL_W, RAIL_H, RAIL_V_W, RAIL_V_D = 6.0, 3.0, 3.0, 1.0
+SK, SK_T, SK_H = 0.7, 1.8, 4.0
+
+
+def box(x0, y0, z0, length, width, height):
+    return Part.makeBox(length, width, height, V(x0, y0, z0))
+
+
+def vprism(x0, length, y_centre, z_bottom, width, depth):
+    """Triangular prism along X, used for the V-groove in the skid faces."""
+    tri = [
+        V(x0, y_centre - width / 2, z_bottom),
+        V(x0, y_centre + width / 2, z_bottom),
+        V(x0, y_centre, z_bottom + depth),
+        V(x0, y_centre - width / 2, z_bottom),
+    ]
+    return Part.Face(Part.Wire(Part.makePolygon(tri).Edges)).extrude(V(length, 0, 0))
+
+
+def rbox(x0, y0, z0, length, width, height, r):
+    """Box with rounded vertical edges."""
+    b = box(x0, y0, z0, length, width, height)
+    if r <= 0:
+        return b
+    ed = [e for e in b.Edges if abs(e.Vertexes[0].Z - e.Vertexes[1].Z) > 1e-6]
+    return b.makeFillet(r, ed)
+
+
+def cyl(x, y, z0, r, h, d=V(0, 0, 1)):
+    return Part.makeCylinder(r, h, V(x, y, z0), d)
+
+
+def fuse(*s):
+    """Fuse shapes and remove internal splitters."""
+    r = s[0]
+    for x in s[1:]:
+        r = r.fuse(x)
+    return r.removeSplitter()
+
+
+def export_step(shape, path):
+    shape.exportStep(path)
+    output = Path(path)
+    output.write_text("\n".join(line.rstrip() for line in output.read_text().splitlines()) + "\n")
+
+
+def kc(x, y):  # KiCad to case coordinates
+    return (X0 + x - 101.0, Y0 + 100.0 - y)
+
+
+corners = [
+    (-BOSS_OFF, -BOSS_OFF),
+    (L_IN + BOSS_OFF, -BOSS_OFF),
+    (-BOSS_OFF, W_IN + BOSS_OFF),
+    (L_IN + BOSS_OFF, W_IN + BOSS_OFF),
+]
+
+
+def outline(z0, h, wall=WALL):
+    """Outer profile: rounded shell plus a lobe and a filled square at each corner.
+
+    The lobes carry the M3 inserts outside the silicone cord. The larger
+    sealing-corner radius separates the cord gland from the screw and retainer
+    recesses. The case measures 83 x 68 mm over the corner columns.
+    """
+    s = rbox(-wall, -wall, z0, L_IN + 2 * wall, W_IN + 2 * wall, h, R_IN + wall)
+    parts = [s]
+    for x, y in corners:
+        parts.append(cyl(x, y, z0, BOSS_R, h))
+        bx = min(x, x + (BOSS_OFF + 1) * (1 if x < 0 else -1))
+        by = min(y, y + (BOSS_OFF + 1) * (1 if y < 0 else -1))
+        parts.append(box(bx, by, z0, BOSS_OFF + 1, BOSS_OFF + 1, h))
+    return fuse(*parts)
+
+
+# KiCad outline; pcb_fit_audit.py checks this table, H1, thickness and supports.
+EDGES = [  # ("L", start, end) or ("A", start, mid, end), KiCad coordinates
+    ("A", (101, 63), (101.585786, 61.585786), (103, 61)),
+    ("L", (101, 87), (101, 63)),
+    ("L", (103, 61), (113.5, 61)),
+    ("A", (103, 89), (101.585786, 88.414214), (101, 87)),
+    ("L", (108, 89), (103, 89)),
+    ("A", (108, 89), (109.414214, 89.585786), (110, 91)),
+    ("L", (110, 98), (110, 91)),
+    ("A", (112, 100), (110.585786, 99.414214), (110, 98)),
+    ("L", (112, 100), (137, 100)),
+    ("A", (115.5, 56.5), (116.085786, 55.085786), (117.5, 54.5)),
+    ("A", (115.5, 59), (114.914214, 60.414214), (113.5, 61)),
+    ("L", (115.5, 59), (115.5, 56.5)),
+    ("L", (117.5, 54.5), (128.5, 54.5)),
+    ("A", (128.5, 54.5), (129.914214, 55.085786), (130.5, 56.5)),
+    ("L", (130.5, 56.5), (130.5, 59)),
+    ("A", (132.5, 61), (131.085786, 60.414214), (130.5, 59)),
+    ("A", (139, 81), (139.585786, 79.585786), (141, 79)),
+    ("A", (139, 98), (138.414214, 99.414214), (137, 100)),
+    ("L", (139, 98), (139, 81)),
+    ("L", (141, 79), (147, 79)),
+    ("L", (147, 61), (132.5, 61)),
+    ("A", (147, 61), (148.414214, 61.585786), (149, 63)),
+    ("A", (149, 77), (148.414214, 78.414214), (147, 79)),
+    ("L", (149, 77), (149, 63)),
+]
+
+
+def pcb_face(z):
+    es = []
+    for e in EDGES:
+        p = [V(*kc(*q), z) for q in e[1:]]
+        es.append(Part.LineSegment(p[0], p[1]).toShape() if e[0] == "L" else Part.Arc(*p).toShape())
+    return Part.Face(Part.Wire(Part.__sortEdges__(es)))
+
+
+# Thin body below a wide continuous sealing collar. Port pads preserve clamp thickness.
+base = outline(-FLOOR, FLOOR)
+base = fuse(base, outline(0, H_IN - COLLAR_H, BODY_WALL), outline(H_IN - COLLAR_H, COLLAR_H, SEAL_WALL))
+base = base.cut(rbox(0, 0, 0, L_IN, W_IN, H_IN - COLLAR_H + 0.01, R_IN))
+base = base.cut(rbox(0, 0, H_IN - COLLAR_H, L_IN, W_IN, COLLAR_H + SEAL_GAP + 1, R_SEAL))
+base = fuse(base, cyl(-WALL, SMA_Y, SMA_Z, 12.0, WALL, V(1, 0, 0)), cyl(L_IN, VENT_Y, VENT_Z, 11.8, WALL, V(1, 0, 0)))
+for x, y in corners:
+    base = base.fuse(cyl(x, y, H_IN - 0.01, BOSS_R, SEAL_GAP + 0.01))
+    base = base.cut(cyl(x, y, H_IN + SEAL_GAP - RETAINER_DEPTH, RETAINER_D / 2, RETAINER_DEPTH + 0.1))
+    base = base.cut(cyl(x, y, H_IN + SEAL_GAP - RETAINER_DEPTH - INSERT_DEPTH, INSERT_D / 2, INSERT_DEPTH + 0.1))
+# The 3 mm cord gland leaves 1.7 mm lips; JLC recommends >1.5 mm for local features.
+GROOVE_OFFSET = SEAL_WALL / 2
+outer_offset = GROOVE_OFFSET + GROOVE_W / 2
+inner_offset = GROOVE_OFFSET - GROOVE_W / 2
+groove = rbox(
+    -outer_offset,
+    -outer_offset,
+    H_IN - GROOVE_D,
+    L_IN + 2 * outer_offset,
+    W_IN + 2 * outer_offset,
+    GROOVE_D + 0.1,
+    R_SEAL + outer_offset,
+)
+groove = groove.cut(
+    rbox(
+        -inner_offset,
+        -inner_offset,
+        H_IN - GROOVE_D - 1,
+        L_IN + 2 * inner_offset,
+        W_IN + 2 * inner_offset,
+        GROOVE_D + 2,
+        R_SEAL + inner_offset,
+    )
+)
+base = base.cut(groove)
+px, py, pl, pw = POCKET
+pocket = box(px - POCKET_WALL, 0, 0, pl + 2 * POCKET_WALL, py + pw + POCKET_WALL, PLATE_Z0)
+pocket = pocket.cut(box(px, py, -1, pl, pw, PLATE_Z0 + 2))
+pocket = pocket.cut(box(px + 1, py + pw - 0.1, PLATE_Z0 - 3, 7, POCKET_WALL + 0.3, 4))
+base = base.fuse(pocket)
+for x, y in CARRIER_FIX_POINTS:
+    base = base.fuse(cyl(x, y, 0, 2.75, PLATE_Z0))
+    # Tie the carrier mounting bosses to the rear wall.
+    base = base.fuse(box(x - 1.2, y, 0, 2.4, W_IN - y, PLATE_Z0 - 1))
+    base = base.cut(cyl(x, y, PLATE_Z0 - M2_DEPTH, M2_PILOT / 2, M2_DEPTH + 0.1))
+base = base.cut(cyl(-WALL - 1, SMA_Y, SMA_Z, SMA_D / 2, WALL + 2, V(1, 0, 0)))
+base = base.cut(cyl(L_IN - 1, VENT_Y, VENT_Z, VENT_D / 2, WALL + 2, V(1, 0, 0)))
+base = base.cut(cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_FACE_D / 2, VENT_FACE_H + 1, V(1, 0, 0)))
+base = base.cut(
+    box(
+        L_IN + WALL - VENT_FACE_H - 0.2,
+        VENT_Y - VENT_DRAIN_W / 2,
+        VENT_Z - VENT_FACE_D / 2 - VENT_DRAIN_H,
+        VENT_FACE_H + 1.4,
+        VENT_DRAIN_W,
+        VENT_DRAIN_H + VENT_DRAIN_OVERLAP,
+    )
+)
+vent_nest_ring = None
+tz0 = -FLOOR + TIE_SKIN
+for tx in TIE_X:
+    base = base.cut(box(tx - TIE_W / 2, -WALL - 20, tz0, TIE_W, W_IN + 2 * WALL + 40, TIE_H))
+for ty in TIE_Y:
+    base = base.cut(box(-WALL - 20, ty - TIE_W2 / 2, tz0, L_IN + 2 * WALL + 40, TIE_W2, TIE_H2))
+base = base.removeSplitter()
+
+
+def _exit_edges(zq):
+    """Straight edges of the four tunnel openings that lie at height zq on an outer face.
+
+    Both pairs need the radius: the tie and the cord are both loaded over that edge. Selecting by
+    orientation as well as height matters, because the two pairs exit on different faces, and a
+    selector that only matched X running edges left the cord tunnels square.
+    """
+    out = []
+    for e in base.Edges:
+        if e.Curve.TypeId != "Part::GeomLine":
+            continue
+        p0, p1 = e.Vertexes[0].Point, e.Vertexes[1].Point
+        if abs(p0.z - p1.z) > 1e-6 or abs(p0.z - zq) > 1e-6:
+            continue
+        dx, dy = abs(p0.x - p1.x), abs(p0.y - p1.y)
+        on_y_face = min(abs(p0.y + WALL), abs(p0.y - W_IN - WALL)) < 1e-6
+        on_x_face = min(abs(p0.x + WALL), abs(p0.x - L_IN - WALL)) < 1e-6
+        if (
+            dx > 1
+            and dy < 1e-6
+            and on_y_face
+            and any(abs(p0.x - (tx + s * TIE_W / 2)) < 1e-6 for tx in TIE_X for s in (-1, 1))
+        ):
+            out.append(e)
+        elif (
+            dy > 1
+            and dx < 1e-6
+            and on_x_face
+            and any(abs(p0.y - (ty + s * TIE_W2 / 2)) < 1e-6 for ty in TIE_Y for s in (-1, 1))
+        ):
+            out.append(e)
+    return out
+
+
+# R2 tunnel exits protect the tie and leave 2 mm of load-bearing skin.
+base = base.makeFillet(TIE_R_EXIT, _exit_edges(tz0))
+base = base.makeFillet(1.0, _exit_edges(tz0 + TIE_H))
+base = base.makeFillet(1.0, _exit_edges(tz0 + TIE_H2))
+
+# Add skids after the tunnel fillets so the edge selector only sees tunnel exits.
+for ry in (-WALL, W_IN + WALL - RAIL_W):
+    base = base.fuse(box(-WALL, ry, -FLOOR - RAIL_H, L_IN + 2 * WALL, RAIL_W, RAIL_H))
+    base = base.cut(
+        vprism(-WALL - 1.0, L_IN + 2 * WALL + 2.0, ry + RAIL_W / 2, -FLOOR - RAIL_H - 1.0, RAIL_V_W, RAIL_V_D + 1.0)
+    )
+base = base.removeSplitter()
+
+if LANYARD:  # antenna lanyard lug
+    lug = box(-WALL - 3.0, SMA_Y - 21.0, SMA_Z - 3.0, 5.4, 7.0, 6.0)
+    lug = lug.cut(cyl(-WALL - 4, SMA_Y - 17.5, SMA_Z, 1.0, 6.0, V(1, 0, 0)))
+    base = base.fuse(lug).removeSplitter()
+base = base.removeSplitter()
+
+# Cord seal with hard stops at the four screw bosses; standard M3x10 screws.
+# The recess also accepts a retaining washer with an optional reduced-shank screw.
+lid_z = H_IN + SEAL_GAP
+lid = outline(lid_z, LID_T, SEAL_WALL)
+for x, y in corners:
+    lid = lid.cut(cyl(x, y, lid_z - 1, LID_HOLE_D / 2, LID_T + 2))
+    lid = lid.cut(cyl(x, y, lid_z - 0.01, RETAINER_D / 2, 0.51))
+skirt = rbox(SK, SK, lid_z - SK_H, L_IN - 2 * SK, W_IN - 2 * SK, SK_H, R_SEAL - SK)
+skirt = skirt.cut(
+    rbox(
+        SK + SK_T,
+        SK + SK_T,
+        lid_z - SK_H - 1,
+        L_IN - 2 * (SK + SK_T),
+        W_IN - 2 * (SK + SK_T),
+        SK_H + 2,
+        R_SEAL - SK - SK_T,
+    )
+)
+lid = fuse(lid, skirt)
+# External through-hole cord lug, entirely outside the sealing ring.
+lug = box(-WALL - 3, 10.5, lid_z + 1.0, 3.2, 7.0, 6.0)
+lug = lug.cut(cyl(-WALL - 4, 14, lid_z + 4.0, 1.0, 6, V(1, 0, 0)))
+lid = lid.fuse(lug)
+lcx, lcy, ltop = L_IN / 2, W_IN / 2, lid_z + LID_T
+SPACERS = [
+    (lcx + dx, lcy + dy)
+    for dx in (-min(22.0, PANEL_L / 2 - PANEL_PAD_INSET), min(22.0, PANEL_L / 2 - PANEL_PAD_INSET))
+    for dy in (-(PANEL_W / 2 - PANEL_PAD_INSET), PANEL_W / 2 - PANEL_PAD_INSET)
+]
+panel_supports = [
+    fuse(
+        cyl(x, y, ltop - 0.01, SPACER_STEM_D / 2, SPACER_H - SPACER_CAP_T + 0.02),
+        cyl(x, y, ltop + SPACER_H - SPACER_CAP_T, SPACER_D / 2, SPACER_CAP_T),
+    )
+    for x, y in SPACERS
+]
+lid = fuse(lid, *panel_supports)
+panel_bonds = Part.makeCompound([cyl(x, y, ltop + SPACER_H, SPACER_D / 2, PANEL_BOND_T) for x, y in SPACERS])
+shx, shy = SOLAR_HOLE_XY
+# Open potting tray above the roof; two separate bores leave sealant around each lead.
+solar_well_outer = box(
+    shx - SOLAR_WELL_L / 2 - SOLAR_WELL_WALL,
+    shy - SOLAR_WELL_W / 2 - SOLAR_WELL_WALL,
+    ltop - 0.01,
+    SOLAR_WELL_L + 2 * SOLAR_WELL_WALL,
+    SOLAR_WELL_W + 2 * SOLAR_WELL_WALL,
+    SOLAR_WELL_H + 0.01,
+)
+solar_well_inner = box(
+    shx - SOLAR_WELL_L / 2, shy - SOLAR_WELL_W / 2, ltop, SOLAR_WELL_L, SOLAR_WELL_W, SOLAR_WELL_H + 1
+)
+solar_well = solar_well_outer.cut(solar_well_inner)
+lid = lid.fuse(solar_well)
+solar_holes = [(shx + dx, shy) for dx in (-SOLAR_HOLE_PITCH / 2, SOLAR_HOLE_PITCH / 2)]
+for x, y in solar_holes:
+    lid = lid.cut(cyl(x, y, lid_z - 1, SOLAR_HOLE_D / 2, LID_T + SOLAR_WELL_H + 2))
+lid = lid.removeSplitter()
+
+# Full removable carrier: six short board supports and H1, vertical insertion.
+plate = box(2.0, 0.5, PLATE_Z0, 54.0, 47.5, PLATE_T)
+for x, y in CARRIER_FIX_POINTS:
+    plate = plate.fuse(cyl(x, y, PLATE_Z0, 3.5, PLATE_T))
+    plate = plate.cut(cyl(x, y, PLATE_Z0 - 1, 1.6, PLATE_T + 2))
+# Retain the rigid SMA and its wrench envelope below the PCB.
+plate = plate.cut(cyl(-1, SMA_Y, SMA_Z, SMA_KEEPOUT_R + 0.5, SMA_NOSE + SMA_BEND + 2, V(1, 0, 0)))
+plate = plate.cut(cyl(-1, SMA_Y, SMA_Z, 8.5, 13, V(1, 0, 0)))
+plate = plate.cut(box(px + 1, py + pw - 2, PLATE_Z0 - 1, 7, 5, PLATE_T + 2))
+for x, y, r in PCB_SUPPORTS:
+    ex, ey = kc(x, y)
+    plate = plate.fuse(cyl(ex, ey, PLATE_Z0 + PLATE_T - 0.01, r, PILLAR_H + 0.01))
+hx, hy = kc(124.5, 61.35)
+plate = plate.fuse(cyl(hx, hy, PLATE_Z0 + PLATE_T - 0.01, 2.75, PILLAR_H + 0.01))
+plate = plate.cut(cyl(hx, hy, PCB_Z - M2_DEPTH, M2_PILOT / 2, M2_DEPTH + 0.1))
+# Two upright edge stops prevent rotation about H1 without an insertion tilt.
+for xx, yy, ww, hh in [(3.3, 18.0, 2.0, 4.0), (54.7, 36.0, 2.0, 2.0)]:
+    plate = plate.fuse(box(xx, yy, PLATE_Z0 + PLATE_T - 0.01, ww, hh, PILLAR_H + PCB_T + 0.41))
+# Raised open dock reserves a 7 x 12 x 6 mm mated extension connector envelope.
+SERVICE_Z = 18.5
+plate = plate.fuse(box(50.0, 0.5, PLATE_Z0, 9.0, 16.0, SERVICE_Z - PLATE_Z0))
+plate = plate.fuse(box(50.0, 0.5, SERVICE_Z - 0.01, 9.0, 2.0, 2.51))
+# Open rear edge allows lifting the plug out; preserve vent nut/grip space.
+plate = plate.cut(cyl(L_IN - VENT_FREE_L, VENT_Y, VENT_Z, VENT_FREE_D / 2, VENT_FREE_L, V(1, 0, 0)))
+plate = plate.removeSplitter()
+# The entire carrier must pass vertically through the rounded sealing aperture.
+plate = plate.common(rbox(SK, SK, PLATE_Z0 - 0.5, L_IN - 2 * SK, W_IN - 2 * SK, 20.0, R_SEAL - SK)).removeSplitter()
+# Compressed cord envelope: ellipse with the original cross-section area.
+path_block = rbox(
+    -GROOVE_OFFSET,
+    -GROOVE_OFFSET,
+    H_IN - GROOVE_D / 2,
+    L_IN + 2 * GROOVE_OFFSET,
+    W_IN + 2 * GROOVE_OFFSET,
+    1,
+    R_SEAL + GROOVE_OFFSET,
+)
+path_face = min((f for f in path_block.Faces if f.Surface.TypeId == "Part::GeomPlane"), key=lambda f: f.CenterOfMass.z)
+seal_path = path_face.OuterWire
+straight = next(e for e in seal_path.Edges if e.Curve.TypeId == "Part::GeomLine")
+start = straight.Vertexes[0].Point
+direction = straight.Vertexes[1].Point - start
+direction.normalize()
+minor = GROOVE_D / 2
+major = (CORD_D / 2) ** 2 / minor
+profile = Part.Ellipse(start + V(-direction.y, direction.x, 0) * major, start + V(0, 0, minor), start).toShape()
+gasket = seal_path.makePipeShell([Part.Wire(profile)], True, True)
+CORD_LENGTH = seal_path.Length
+panel = box(lcx - PANEL_L / 2, lcy - PANEL_W / 2, ltop + STANDOFF_H, PANEL_L, PANEL_W, PANEL_T)
+service_plug = box(50.5, 2.5, SERVICE_Z, 7.0, 12.0, 6.0)
+pcb = pcb_face(PCB_Z).extrude(V(0, 0, PCB_T)).cut(cyl(hx, hy, PCB_Z - 1, 1.1, 5))
+
+
+def comp(x1, x2, y1, y2, h, bottom=False):
+    a, b = kc(x1, y1), kc(x2, y2)
+    z = PCB_Z - h if bottom else PCB_Z + PCB_T
+    return box(min(a[0], b[0]), min(a[1], b[1]), z, abs(a[0] - b[0]), abs(a[1] - b[1]), h)
+
+
+comps = fuse(
+    comp(136.8, 147.7, 61.7, 78.4, 6.0),
+    comp(116.9, 121.4, 55.0, 63.5, 4.5),
+    comp(112.1, 117.6, 90.9, 97.8, 8.0),
+    comp(108.4, 113.9, 78.4, 85.3, 8.0),
+    comp(114.4, 120.5, 86.2, 89.7, 11.0),
+    comp(117.6, 133.1, 66.8, 82.4, 3.2),
+    comp(120.7, 127.7, 69.9, 74.4, 4.5, True),
+    comp(120.7, 129.7, 74.7, 79.2, 4.5, True),
+)
+bat = box(px + (pl - BAT_L) / 2, py + (pw - BAT_W) / 2, 0.2, BAT_L, BAT_W, BAT_T)
+
+sma_keepout = cyl(0.01, SMA_Y, SMA_Z, SMA_KEEPOUT_R, SMA_NOSE + SMA_BEND, V(1, 0, 0))
+sma_outside = cyl(-WALL - 0.01 - SMA_OUT_L, SMA_Y, SMA_Z, SMA_OUT_R, SMA_OUT_L, V(1, 0, 0))
+# Cable envelope; excluded from check().
+PIGTAIL = [
+    (25.0, SMA_Y, SMA_Z),
+    (29.0, 35.0, 8.0),
+    (31.0, 44.0, 8.0),
+    (17.0, 48.0, 9.0),
+    (16.5, 48.0, 22.0),
+    (23.0, 46.0, 24.0),
+    (24.8, 43.1, 23.3),
+]
+
+
+def tube(pts, r):
+    t = None
+    for a_, b_ in zip(pts[:-1], pts[1:]):
+        a_, b_ = V(*a_), V(*b_)
+        d_ = b_ - a_
+        seg = Part.makeCylinder(r, d_.Length, a_, d_).fuse(Part.makeSphere(r, b_))
+        t = seg if t is None else t.fuse(seg)
+    return t
+
+
+pig_tube = tube(PIGTAIL, 1.5)
+vent_plug = cyl(L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_THREAD, V(1, 0, 0))
+vent_plug = vent_plug.fuse(
+    cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_CAP_D / 2, 2.0 + VENT_FACE_H, V(1, 0, 0))
+)
+vent_plug = vent_plug.fuse(cyl(L_IN + WALL + 2.0, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 2.5, VENT_CAP_H - 2.0, V(1, 0, 0)))
+vent_plug = vent_plug.cut(cyl(L_IN + WALL + VENT_CAP_H - 1.2, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 5.0, 2.0, V(1, 0, 0)))
+vent_nut_dummy = cyl(L_IN - VENT_NUT_H, VENT_Y, VENT_Z, VENT_NUT_D / 2, VENT_NUT_H, V(1, 0, 0)).cut(
+    cyl(L_IN - VENT_NUT_H - 1, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_NUT_H + 2, V(1, 0, 0))
+)
+vent_thread = cyl(
+    L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_D / 2, VENT_THREAD - WALL + VENT_FACE_H, V(1, 0, 0)
+)
+vent_nut = cyl(L_IN - VENT_FREE_L, VENT_Y, VENT_Z, VENT_FREE_D / 2, VENT_FREE_L, V(1, 0, 0))  # nut plus grip space
+
+
+def check():
+    """Return overlapping part pairs."""
+    bad = []
+    printed = [("base", base), ("lid", lid), ("plate", plate)]
+    for i, (a, sa) in enumerate(printed):
+        for b, sb in printed[i + 1 :]:
+            if sa.common(sb).Volume > 0.001:
+                bad.append(f"{a} x {b}: {sa.common(sb).Volume:.3f} mm3")
+    for a, sa in [
+        ("PCB", pcb),
+        ("components", comps),
+        ("battery", bat),
+        ("SMA", sma_keepout),
+        ("vent grip", vent_nut),
+        ("service plug", service_plug),
+    ]:
+        for b, sb in printed:
+            v = sa.common(sb).Volume
+            if v > 0.001:
+                bad.append(f"{a} x {b}: {v:.3f} mm3")
+    return bad
+
+
+if os.environ.get("LHB_NO_EXPORT") != "1":
+    os.makedirs(OUT_DIR, exist_ok=True)
+    parts = {"base": base, "lid": lid, "battery_plate": plate}
+    errors = check()
+    if errors:
+        raise ValueError(errors)
+    meshes = {}
+    for n, s in parts.items():
+        meshes[n] = Mesh.Mesh(s.tessellate(0.02))
+        if not meshes[n].isSolid():
+            raise ValueError(f"Open STL mesh: {n}")
+    for n, s in parts.items():
+        if not s.isValid() or len(s.Solids) != 1:
+            raise ValueError(f"Invalid printable part: {n}")
+        export_step(s, os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.step"))
+        meshes[n].write(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.stl"))
+        print(n, round(s.Volume / 1000, 3), "cm3")
+    export_step(Part.makeCompound(list(parts.values())), os.path.join(OUT_DIR, "LoRaHarvesterBox_assembly.step"))
+    doc = App.newDocument("LoRaHarvesterBox_Enclosure")
+    for n, s in list(parts.items()) + [
+        ("PCB_dummy", pcb),
+        ("parts_dummy", comps),
+        ("LiPo_852040_dummy", bat),
+        ("silicone_cord_compressed_dummy", gasket),
+        ("panel_envelope", panel),
+        ("panel_sikaflex_envelope", panel_bonds),
+        ("vent_plug_dummy", vent_plug),
+        ("vent_nut_dummy", vent_nut_dummy),
+        ("battery_service_plug", service_plug),
+    ]:
+        obj = doc.addObject("Part::Feature", n)
+        obj.Shape = s
+    doc.recompute()
+    doc.saveAs(os.path.join(ROOT, "freecad", "LoRaHarvesterBox_Enclosure.FCStd"))
+    print("Written:", OUT_DIR)
