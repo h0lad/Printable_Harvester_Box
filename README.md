@@ -1,7 +1,9 @@
 ## What is this thing?
 
-![MeshtasticRouterNode](docs/case.png)
-![MeshtasticRouterNode](docs/case2.png)
+![Harvester Boxes](docs/render_sA.png)
+![Harvester Boxes](docs/render_sB.png)
+![Harvester Boxes](docs/render_sC.png)
+![Harvester Boxes](docs/render_sD.png)
 
 This is a box for the PicoLoRaHarvester and LoRaHarvesterbox.
 
