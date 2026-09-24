@@ -46,11 +46,11 @@ CHIMNEY_OD, CHIMNEY_L = 7.0, 5.0     # inner spigot, longer potting length
 
 # ePTFE vent plug, M12, 11 mm thread behind the flange, plastic nut inside; right end wall, opposite the antenna
 VENT = True
-VENT_D, VENT_Y, VENT_Z = 12.4, 24.5, 14.0
+VENT_D, VENT_Y, VENT_Z = 12.4, 24.5, 13.0
 VENT_THREAD, VENT_NUT_D, VENT_NUT_H = 11.0, 17.0, 5.0    # nut: 17 mm across, 5 mm thick
 VENT_CAP_D, VENT_CAP_H = 20.0, 9.0
 VENT_NEST = True                         # pocket around the nut in the inner wall face
-VENT_NEST_D, VENT_NEST_H = VENT_NUT_D + 0.6, VENT_NUT_H + 0.6
+VENT_NEST_D, VENT_NEST_H = VENT_NUT_D + 1.4, VENT_NUT_H + 1.2   # generous, moulded nuts vary
 VENT_NEST_HEX = False                    # True: hex pocket that also holds a hex nut (VENT_NUT_D = across corners)
 
 # antenna lanyard lug
