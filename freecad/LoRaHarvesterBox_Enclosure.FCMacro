@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-import os, math, FreeCAD as App, Part, Mesh
+import math
+import os
+
+import FreeCAD as App
+import Mesh
+import Part
 V = App.Vector
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd(), "out")
@@ -46,12 +51,16 @@ CHIMNEY_OD, CHIMNEY_L = 7.0, 5.0     # inner spigot, longer potting length
 
 # ePTFE vent plug, M12, 11 mm thread behind the flange, plastic nut inside; right end wall, opposite the antenna
 VENT = True
-VENT_D, VENT_Y, VENT_Z = 12.4, 24.5, 13.0
-VENT_THREAD, VENT_NUT_D, VENT_NUT_H = 11.0, 17.0, 5.0    # nut: 17 mm across, 5 mm thick
+VENT_D, VENT_Y, VENT_Z = 12.6, 24.5, 13.0   # 12 mm thread plus 0.6; keep it under the nut outer diameter
+VENT_THREAD = 10.0                       # thread length behind the flange
+VENT_NUT_ID, VENT_NUT_D, VENT_NUT_H = 12.0, 16.0, 5.1    # nut: 12 mm thread, 16 mm across, 5.1 mm thick
+VENT_FACE_D, VENT_FACE_H = 21.0, 1.0     # spot face outside: clamp length stays under the 10 mm thread
 VENT_CAP_D, VENT_CAP_H = 20.0, 9.0
-VENT_NEST = True                         # pocket around the nut in the inner wall face
-VENT_NEST_D, VENT_NEST_H = VENT_NUT_D + 1.4, VENT_NUT_H + 1.2   # generous, moulded nuts vary
+VENT_NEST = False                        # no pocket: a 0.5 mm nut has to be gripped, not seated
+VENT_NEST_D, VENT_NEST_H = VENT_NUT_D + 1.4, VENT_NUT_H + 1.2
+VENT_FREE_D, VENT_FREE_L = 22.0, 8.0     # free space inside for fingers or a small wrench
 VENT_NEST_HEX = False                    # True: hex pocket that also holds a hex nut (VENT_NUT_D = across corners)
+VENT_CAP_D, VENT_CAP_H = 20.0, 8.0       # plug head outside, for the dummy and the clearance check
 
 # antenna lanyard lug
 LANYARD = True
@@ -64,12 +73,13 @@ TIE_W2, TIE_H2 = 8.0, 3.5
 TIE_R_EXIT = 3.5                         # radius at the lower exit edge, where the tie bends
 TIE_LOAD_N = 400.0                       # design load per tie strand, about 40 kg
 
-def box(x0, y0, z0, l, w, h):
-    return Part.makeBox(l, w, h, V(x0, y0, z0))
+def box(x0, y0, z0, length, width, height):
+    return Part.makeBox(length, width, height, V(x0, y0, z0))
 
-def rbox(x0, y0, z0, l, w, h, r):
-    b = box(x0, y0, z0, l, w, h)
-    if r <= 0: return b
+def rbox(x0, y0, z0, length, width, height, r):
+    b = box(x0, y0, z0, length, width, height)
+    if r <= 0:
+        return b
     ed = [e for e in b.Edges if abs(e.Vertexes[0].Z - e.Vertexes[1].Z) > 1e-6]
     return b.makeFillet(r, ed)
 
@@ -78,7 +88,8 @@ def cyl(x, y, z0, r, h, d=V(0, 0, 1)):
 
 def fuse(*s):
     r = s[0]
-    for x in s[1:]: r = r.fuse(x)
+    for x in s[1:]:
+        r = r.fuse(x)
     return r.removeSplitter()
 
 def kc(x, y):                      # KiCad to case coordinates
@@ -138,7 +149,8 @@ feats = [pocket]
 
 # pillars from the floor, outside the pocket
 for (x, y) in [(104.0, 62.3), (114.0, 62.5), (147.8, 62.3), (148.2, 74.5), (135.0, 70.0)]:
-    ex, ey = kc(x, y); feats.append(cyl(ex, ey, 0, 1.3, PCB_Z))
+    ex, ey = kc(x, y)
+    feats.append(cyl(ex, ey, 0, 1.3, PCB_Z))
 # screw boss H1 (M2)
 hx, hy = kc(124.5, 61.35)
 feats.append(cyl(hx, hy, 0, 2.75, PCB_Z))
@@ -168,6 +180,7 @@ base = base.cut(cyl(-WALL - 1, SMA_Y, SMA_Z, SMA_D / 2, WALL + 2, V(1, 0, 0)))
 vent_nest_ring = None
 if VENT:
     base = base.cut(cyl(L_IN - 1, VENT_Y, VENT_Z, VENT_D / 2, WALL + 2, V(1, 0, 0)))
+    base = base.cut(cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_FACE_D / 2, VENT_FACE_H + 1, V(1, 0, 0)))
     if VENT_NEST:                                                      # nut nest on the inner wall face
         nest = cyl(L_IN - VENT_NEST_H, VENT_Y, VENT_Z, VENT_NEST_D / 2 + 3.0, VENT_NEST_H, V(1, 0, 0))
         if VENT_NEST_HEX:
@@ -194,9 +207,11 @@ base = base.removeSplitter()
 def _exit_edges(zq):
     out = []
     for e in base.Edges:
-        if e.Curve.TypeId != "Part::GeomLine": continue
+        if e.Curve.TypeId != "Part::GeomLine":
+            continue
         p0, p1 = e.Vertexes[0].Point, e.Vertexes[1].Point
-        if abs(p0.y - p1.y) > 1e-6 or abs(p0.z - p1.z) > 1e-6 or abs(p0.x - p1.x) < 1: continue
+        if abs(p0.y - p1.y) > 1e-6 or abs(p0.z - p1.z) > 1e-6 or abs(p0.x - p1.x) < 1:
+            continue
         if abs(p0.z - zq) < 1e-6 and min(abs(p0.y + WALL), abs(p0.y - W_IN - WALL)) < 1e-6:
             out.append(e)
     return out
@@ -214,7 +229,7 @@ for (x, y) in corners:                                                 # neck ma
     lid = lid.cut(cyl(x, y, H_IN - 1, LID_HOLE_D / 2, 1.0 + (LID_T - SCREW_CAPTIVE_L) / 2))
     lid = lid.cut(cyl(x, y, zn0, SCREW_CAPTIVE_D / 2, SCREW_CAPTIVE_L))
     lid = lid.cut(cyl(x, y, zn0 + SCREW_CAPTIVE_L, LID_HOLE_D / 2, LID_T + 2))
-SK = 0.4; SK_T = 1.6; SK_H = 2.0
+SK, SK_T, SK_H = 0.4, 1.6, 2.0
 skirt = rbox(SK, SK, H_IN - SK_H, L_IN - 2 * SK, W_IN - 2 * SK, SK_H, R_IN) \
     .cut(box(SK + SK_T, SK + SK_T, H_IN - SK_H - 1, L_IN - 2 * (SK + SK_T), W_IN - 2 * (SK + SK_T), SK_H + 2))
 lid = fuse(lid, skirt)
@@ -239,7 +254,8 @@ plate = plate.fuse(box(po_x0 - SKW - 0.35, 0.5, PLATE_Z0 - SKH, (po_x1 - po_x0) 
                    .cut(box(po_x0 - 0.35, -1, PLATE_Z0 - SKH - 1, (po_x1 - po_x0) + 0.7, po_y1 + 0.35 + 1, SKH + 2)))
 plate = plate.cut(box(px + 1, py + pw - 2, PLATE_Z0 - 2, 7, 5, 5))          # lead notch
 for (x, y) in [(112.5, 98.3), (138.2, 99.1), (125.0, 88.5), (103.5, 86.5)]:
-    ex, ey = kc(x, y); plate = plate.fuse(cyl(ex, ey, PLATE_Z0 + PLATE_T - 0.01, 1.2 if y > 98 else 1.5, PILLAR_H + 0.01))
+    ex, ey = kc(x, y)
+    plate = plate.fuse(cyl(ex, ey, PLATE_Z0 + PLATE_T - 0.01, 1.2 if y > 98 else 1.5, PILLAR_H + 0.01))
 plate = plate.removeSplitter()
 
 
@@ -263,50 +279,68 @@ PIGTAIL = [(SMA_NOSE + SMA_BEND, SMA_Y, SMA_Z), (21.0, 34.5, 8.5), (14.0, 37.5, 
 def tube(pts, r):
     t = None
     for a_, b_ in zip(pts[:-1], pts[1:]):
-        a_, b_ = V(*a_), V(*b_); d_ = b_ - a_
+        a_, b_ = V(*a_), V(*b_)
+        d_ = b_ - a_
         seg = Part.makeCylinder(r, d_.Length, a_, d_).fuse(Part.makeSphere(r, b_))
         t = seg if t is None else t.fuse(seg)
     return t
 pig_tube = tube(PIGTAIL, 1.5)
-vent_thread = cyl(L_IN + WALL - VENT_THREAD, VENT_Y, VENT_Z, VENT_D / 2, VENT_THREAD - WALL, V(1, 0, 0))
-vent_nut = cyl(L_IN - VENT_NUT_H, VENT_Y, VENT_Z, VENT_NUT_D / 2 + 1.0, VENT_NUT_H, V(1, 0, 0))
+vent_plug = cyl(L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_THREAD, V(1, 0, 0))
+vent_plug = vent_plug.fuse(cyl(L_IN + WALL - VENT_FACE_H, VENT_Y, VENT_Z, VENT_CAP_D / 2, 2.0 + VENT_FACE_H, V(1, 0, 0)))
+vent_plug = vent_plug.fuse(cyl(L_IN + WALL + 2.0, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 2.5, VENT_CAP_H - 2.0, V(1, 0, 0)))
+vent_plug = vent_plug.cut(cyl(L_IN + WALL + VENT_CAP_H - 1.2, VENT_Y, VENT_Z, VENT_CAP_D / 2 - 5.0, 2.0, V(1, 0, 0)))
+vent_nut_dummy = cyl(L_IN - VENT_NUT_H, VENT_Y, VENT_Z, VENT_NUT_D / 2, VENT_NUT_H, V(1, 0, 0)).cut(
+                 cyl(L_IN - VENT_NUT_H - 1, VENT_Y, VENT_Z, VENT_NUT_ID / 2, VENT_NUT_H + 2, V(1, 0, 0)))
+vent_thread = cyl(L_IN + WALL - VENT_FACE_H - VENT_THREAD, VENT_Y, VENT_Z, VENT_D / 2,
+                  VENT_THREAD - WALL + VENT_FACE_H, V(1, 0, 0))
+vent_nut = cyl(L_IN - VENT_FREE_L, VENT_Y, VENT_Z, VENT_FREE_D / 2, VENT_FREE_L, V(1, 0, 0))   # nut plus grip space
 def check():
     bad = []
     for n2, b in (("base", base), ("lid", lid), ("plate", plate), ("PCB", pcb), ("parts", comps), ("battery", bat)):
         v = sma_keepout.common(b).Volume
-        if v > 1e-3: bad.append(f"SMA keep-out x {n2}: {v:.3f} mm3")
+        if v > 1e-3:
+            bad.append(f"SMA keep-out x {n2}: {v:.3f} mm3")
         v = pig_tube.common(b).Volume
-        if v > 1e-3: bad.append(f"pigtail path x {n2}: {v:.3f} mm3")
+        if v > 1e-3:
+            bad.append(f"pigtail path x {n2}: {v:.3f} mm3")
     v = sma_outside.common(base).Volume
-    if v > 1e-3: bad.append(f"SMA outside x base: {v:.3f} mm3")
+    if v > 1e-3:
+        bad.append(f"SMA outside x base: {v:.3f} mm3")
     for n1, a in (("PCB", pcb), ("parts", comps), ("battery", bat)):
         for n2, b in (("base", base), ("lid", lid), ("plate", plate)):
-            if n1 == n2: continue
+            if n1 == n2:
+                continue
             v = a.common(b).Volume
-            if v > 1e-3: bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+            if v > 1e-3:
+                bad.append(f"{n1} x {n2}: {v:.3f} mm3")
     for n1, a, n2, b in (("plate", plate, "base", base), ("plate", plate, "lid", lid), ("base", base, "lid", lid)):
         v = a.common(b).Volume
-        if v > 1e-3: bad.append(f"{n1} x {n2}: {v:.3f} mm3")
+        if v > 1e-3:
+            bad.append(f"{n1} x {n2}: {v:.3f} mm3")
     if VENT:
         base_novent = base.cut(vent_nest_ring) if vent_nest_ring else base
         for nm, vk in (("vent thread", vent_thread), ("vent nut", vent_nut)):
             for n2, b in (("PCB", pcb), ("parts", comps), ("base", base_novent), ("plate", plate), ("lid", lid)):
                 v = vk.common(b).Volume
-                if v > 1e-3: bad.append(f"{nm} x {n2}: {v:.3f} mm3")
+                if v > 1e-3:
+                    bad.append(f"{nm} x {n2}: {v:.3f} mm3")
     return bad
 
-if os.environ.get("LHB_NO_EXPORT") != "1":  # Makro/freecadcmd: exportieren
+if os.environ.get("LHB_NO_EXPORT") != "1":  # skipped when a tool imports this file
     os.makedirs(OUT_DIR, exist_ok=True)
     parts = {"base": base, "lid": lid, "battery_plate": plate}
     for n, s in parts.items():
         print(n, "valid:", s.isValid(), "solids:", len(s.Solids), "vol cm3: %.2f" % (s.Volume / 1000),
               "bbox:", [round(v, 1) for v in (s.BoundBox.XLength, s.BoundBox.YLength, s.BoundBox.ZLength)])
         s.exportStep(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.step"))
-        m = Mesh.Mesh(s.tessellate(0.02)); m.write(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.stl"))
+        Mesh.Mesh(s.tessellate(0.02)).write(os.path.join(OUT_DIR, f"LoRaHarvesterBox_{n}.stl"))
     Part.makeCompound([base, lid, plate]).exportStep(os.path.join(OUT_DIR, "LoRaHarvesterBox_assembly.step"))
     print("collisions:", check() or "none")
     doc = App.newDocument("LoRaHarvesterBox_Enclosure")
-    for n, s in list(parts.items()) + [("PCB_dummy", pcb), ("parts_dummy", comps), ("LiPo_852040_dummy", bat)]:
+    dummies = [("PCB_dummy", pcb), ("parts_dummy", comps), ("LiPo_852040_dummy", bat),
+               ("vent_plug_dummy", vent_plug), ("vent_nut_dummy", vent_nut_dummy)]
+    for n, s in list(parts.items()) + dummies:
         doc.addObject("Part::Feature", n).Shape = s
-    doc.recompute(); doc.saveAs(os.path.join(OUT_DIR, "LoRaHarvesterBox_Enclosure.FCStd"))
-    print("fertig ->", OUT_DIR)
+    doc.recompute()
+    doc.saveAs(os.path.join(OUT_DIR, "LoRaHarvesterBox_Enclosure.FCStd"))
+    print("written to", OUT_DIR)
