@@ -1,7 +1,11 @@
 """Tessellates the render scenes into .npz files for render_raster.py.
 
-# ruff: noqa: F821  (names come from the macro that is exec'd below)
+Run with: freecadcmd render_scene.py
+Scenes: sA exploded, sB assembled, sC section through the SMA axis, sD for the bottom camera,
+sE section through the vent axis, sF vent from outside, sG half section of the vent chamber.
 """
+# ruff: noqa: F821  (names come from the macro that is exec'd below)
+
 import math
 import os
 

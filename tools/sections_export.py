@@ -1,6 +1,7 @@
 """Writes 2D cross sections of the model to sections.json.
 
 Run with: freecadcmd sections_export.py
+The macro is executed in this namespace, so its parameters and shapes are used directly.
 """
 # ruff: noqa: F821  (names come from the macro that is exec'd below)
 

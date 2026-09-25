@@ -67,8 +67,8 @@ LANYARD = True
 
 # lashing tunnels in the solid floor: Y pair 6 x 3 for ties 5 x 1.5, X pair 8 x 3.5 for cord
 TIE_W, TIE_H, TIE_SKIN = 6.0, 3.0, 4.0   # tunnel w x h; the 4 mm skin below carries the lashing load
-TIE_X = (8.0, 48.0)                      # tunnel centres in X
-TIE_Y = (10.0, 39.0)                     # second pair along X, so all four directions are available
+TIE_X = (L_IN / 2 - 20.0, L_IN / 2 + 20.0)   # centred on the box, 40 mm apart
+TIE_Y = (W_IN / 2 - 14.5, W_IN / 2 + 14.5)   # centred as well, 29 mm apart
 TIE_W2, TIE_H2 = 8.0, 3.5
 TIE_R_EXIT = 3.5                         # radius at the lower exit edge, where the tie bends
 TIE_LOAD_N = 400.0                       # design load per tie strand, about 40 kg

@@ -1,6 +1,9 @@
 """Renders a tessellated scene (.npz from render_scene.py) to a PNG.
 
 Usage: python3 render_raster.py scene.npz <azimuth deg> <elevation deg> out.png
+
+Orthographic z-buffer rasteriser with two directional lights, a specular term and outlines
+from depth, normal and object discontinuities. Supersampled, then downscaled.
 """
 
 import math
