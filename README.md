@@ -2,7 +2,6 @@
 
 ![An exploded view: the lid and its solar panel lifted off the base, with the O-ring cord and the PCB in place](docs/render_sA.png)
 ![The assembled box, with the SMA bulkhead in the front wall and the antenna standing above it](docs/render_sB.png)
-![The box seen end on, in section through the SMA axis](docs/render_sC.png)
 ![The assembled box seen from the antenna corner, with the vent plug in the side wall](docs/render_sD.png)
 
 This box holds a PicoLoRaHarvester or a LoRaHarvesterbox.
