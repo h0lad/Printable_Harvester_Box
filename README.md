@@ -19,6 +19,7 @@ The inner cavity is 64 x 49 x 29 mm, and the vent chamber occupies x 56 to 64.
 
 Bright nylon, printed by SLS or MJF. One material that JLC3DP stocks is 3301PA nylon, printed by SLS.
 
+Don't even think of using PLA...
 
 ## Components to buy
 
